@@ -1,6 +1,7 @@
-# Finance Tracker Pribadi
+# TOMO 🍅
 
-Sistem pencatatan keuangan pribadi yang dirancang agar **mencatat lebih cepat daripada malas**.
+**TOMO** (友, "teman") adalah finance tracker pribadi yang dirancang agar **mencatat lebih
+cepat daripada malas** — pencatat keuangan yang terasa seperti teman, dengan maskot si tomat.
 Satu backend, tiga pintu masuk: Telegram bot, web app (PWA), dan Android.
 
 ## Fitur Utama
@@ -15,11 +16,17 @@ Satu backend, tiga pintu masuk: Telegram bot, web app (PWA), dan Android.
 
 - [Arsitektur Sistem](docs/ARCHITECTURE.md) — komponen, tech stack, skema DB, API, deployment
 - [Requirement & Fitur](docs/REQUIREMENTS.md) — functional/non-functional requirements, prioritas, acceptance criteria
+- [Design System](docs/DESIGN.md) — identitas visual, palet warna, tipografi, maskot, komponen UI
 
 ## Tech Stack (ringkas)
 
-FastAPI · PostgreSQL · React PWA · python-telegram-bot · LLM Vision (OCR) · Docker Compose · Caddy
+FastAPI · PostgreSQL · React PWA · Telegram Bot API (webhook) · Gemini Vision (OCR) · Docker Compose · Caddy
 
 ## Status
 
-📋 Tahap desain — implementasi dimulai dari Fase 1 (lihat roadmap di dokumen arsitektur).
+- ✅ **Fase 1 — Fondasi**: API (auth JWT, CRUD transaksi/kategori/akun), Docker + Caddy
+- ✅ **Fase 2 — Telegram bot**: quick-add parser, auto-kategori yang belajar dari koreksi, tombol inline, ringkasan `/hariini` `/minggu` `/bulan`, `/undo`
+- ✅ **Fase 3 — OCR struk**: foto struk/screenshot e-wallet → LLM Vision → draft transaksi (di bot & web), foto tersimpan & bisa dilihat lagi
+- ⏭️ **Fase 4 — Web app (PWA)** (berikutnya)
+
+Kode backend di [backend/](backend/) — 38 test lulus. Lihat [backend/README.md](backend/README.md) untuk cara menjalankan.

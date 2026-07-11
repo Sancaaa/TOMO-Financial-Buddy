@@ -20,6 +20,7 @@ class TransactionBase(BaseModel):
 class TransactionCreate(TransactionBase):
     source: str = "web"
     raw_input: str | None = None
+    receipt_id: int | None = None
 
 
 class TransactionUpdate(BaseModel):

@@ -1,20 +1,23 @@
-from calendar import monthrange
+﻿from calendar import monthrange
 from datetime import datetime, timezone
-from decimal import Decimal
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user
+from app.core.config import settings
 from app.core.database import get_db
-from app.models import Account, Transaction
+from app.models import Transaction
+from app.schemas.receipt import OCRDraft, OCRItem, OCRResult
 from app.schemas.transaction import (
     TransactionCreate,
     TransactionList,
     TransactionOut,
     TransactionUpdate,
 )
+from app.services.ledger import apply_balance
+from app.services.receipts import build_draft, process_receipt
 
 router = APIRouter(
     prefix="/transactions",
@@ -36,21 +39,6 @@ def _month_range(month: str) -> tuple[datetime, datetime]:
             "Format month harus YYYY-MM, contoh 2026-07",
         )
     return start, end
-
-
-def _apply_balance(db: Session, tx: Transaction, sign: int) -> None:
-    """Sesuaikan saldo akun. sign=+1 menerapkan tx, sign=-1 membatalkannya.
-
-    expense mengurangi saldo, income menambah. transfer tidak diproses di sini
-    (double-entry transfer menyusul di fase berikutnya).
-    """
-    if tx.account_id is None or tx.type == "transfer":
-        return
-    account = db.get(Account, tx.account_id)
-    if account is None:
-        return
-    direction = Decimal(1) if tx.type == "income" else Decimal(-1)
-    account.balance = account.balance + direction * tx.amount * sign
 
 
 @router.get("", response_model=TransactionList)
@@ -100,10 +88,49 @@ def create_transaction(
     tx = Transaction(**data)
     db.add(tx)
     db.flush()
-    _apply_balance(db, tx, sign=1)
+    apply_balance(db, tx, sign=1)
     db.commit()
     db.refresh(tx)
     return tx
+
+
+@router.post("/ocr", response_model=OCRResult)
+def ocr_transaction(
+    file: UploadFile = File(...), db: Session = Depends(get_db)
+) -> OCRResult:
+    """Unggah foto struk → simpan + OCR → kembalikan draft untuk dikonfirmasi.
+
+    Draft belum tersimpan sebagai transaksi; client mengirim POST /transactions
+    dengan receipt_id untuk mempersisten.
+    """
+    image_bytes = file.file.read()
+    if len(image_bytes) > settings.ocr_max_image_mb * 1024 * 1024:
+        raise HTTPException(
+            status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            f"Gambar melebihi {settings.ocr_max_image_mb} MB",
+        )
+    media_type = file.content_type or "image/jpeg"
+    receipt, extraction = process_receipt(db, image_bytes, media_type)
+
+    if extraction is None:
+        return OCRResult(receipt_id=receipt.id, ocr_status=receipt.ocr_status)
+
+    draft = build_draft(db, extraction)
+    return OCRResult(
+        receipt_id=receipt.id,
+        ocr_status=receipt.ocr_status,
+        merchant=extraction.merchant,
+        confidence=extraction.confidence,
+        items=[OCRItem(name=i.name, qty=i.qty, price=i.price) for i in extraction.items],
+        draft=OCRDraft(
+            amount=draft.amount,
+            type=draft.type,
+            category_id=draft.category_id,
+            category_name=draft.category_name,
+            description=draft.description,
+            occurred_at=draft.occurred_at,
+        ),
+    )
 
 
 @router.get("/{tx_id}", response_model=TransactionOut)
@@ -123,10 +150,10 @@ def update_transaction(
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Transaksi tidak ditemukan")
 
     # batalkan efek saldo lama, terapkan perubahan, lalu terapkan efek saldo baru
-    _apply_balance(db, tx, sign=-1)
+    apply_balance(db, tx, sign=-1)
     for field, value in payload.model_dump(exclude_unset=True).items():
         setattr(tx, field, value)
-    _apply_balance(db, tx, sign=1)
+    apply_balance(db, tx, sign=1)
 
     db.commit()
     db.refresh(tx)
@@ -138,6 +165,7 @@ def delete_transaction(tx_id: int, db: Session = Depends(get_db)) -> None:
     tx = db.get(Transaction, tx_id)
     if tx is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Transaksi tidak ditemukan")
-    _apply_balance(db, tx, sign=-1)
+    apply_balance(db, tx, sign=-1)
     db.delete(tx)
     db.commit()
+

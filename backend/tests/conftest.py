@@ -1,4 +1,5 @@
 import os
+import shutil
 from pathlib import Path
 
 import pytest
@@ -9,11 +10,14 @@ os.environ["DATABASE_URL"] = f"sqlite:///{_DB_PATH.as_posix()}"
 os.environ["INITIAL_USERNAME"] = "admin"
 os.environ["INITIAL_PASSWORD"] = "admin123"
 os.environ["JWT_SECRET"] = "test-secret"
+_RECEIPTS_DIR = Path(__file__).parent / "_receipts"
+os.environ["RECEIPTS_DIR"] = str(_RECEIPTS_DIR)
 
 from fastapi.testclient import TestClient  # noqa: E402
 
-from app.core.database import engine  # noqa: E402
+from app.core.database import Base, SessionLocal, engine  # noqa: E402
 from app.main import app  # noqa: E402
+from app.seed import seed  # noqa: E402
 
 
 def _remove_db() -> None:
@@ -22,6 +26,8 @@ def _remove_db() -> None:
         _DB_PATH.unlink(missing_ok=True)
     except PermissionError:
         pass
+    if _RECEIPTS_DIR.exists():
+        shutil.rmtree(_RECEIPTS_DIR, ignore_errors=True)
 
 
 @pytest.fixture(scope="session", autouse=True)
@@ -36,6 +42,16 @@ def client():
     # `with` memicu lifespan: create_all + seed terhadap SQLite.
     with TestClient(app) as c:
         yield c
+
+
+@pytest.fixture()
+def db():
+    """Session dengan skema bersih + data seed, untuk test service & bot."""
+    Base.metadata.drop_all(bind=engine)
+    Base.metadata.create_all(bind=engine)
+    with SessionLocal() as session:
+        seed(session)
+        yield session
 
 
 @pytest.fixture()
