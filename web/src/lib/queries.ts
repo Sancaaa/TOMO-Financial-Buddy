@@ -1,0 +1,153 @@
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { api } from "./api";
+import type {
+  Account,
+  Category,
+  OCRResult,
+  Summary,
+  Transaction,
+  TransactionList,
+  Trend,
+} from "./types";
+
+export function useCategories() {
+  return useQuery({
+    queryKey: ["categories"],
+    queryFn: () => api.get<Category[]>("/categories"),
+  });
+}
+
+export function useAccounts() {
+  return useQuery({
+    queryKey: ["accounts"],
+    queryFn: () => api.get<Account[]>("/accounts"),
+  });
+}
+
+export interface TxFilters {
+  month?: string;
+  category_id?: number;
+  type?: string;
+  q?: string;
+  limit?: number;
+  offset?: number;
+}
+
+export function useTransactions(filters: TxFilters) {
+  const params = new URLSearchParams();
+  for (const [k, v] of Object.entries(filters)) {
+    if (v !== undefined && v !== "") params.set(k, String(v));
+  }
+  const qs = params.toString();
+  return useQuery({
+    queryKey: ["transactions", filters],
+    queryFn: () => api.get<TransactionList>(`/transactions${qs ? "?" + qs : ""}`),
+  });
+}
+
+export function useSummary(month: string) {
+  return useQuery({
+    queryKey: ["summary", month],
+    queryFn: () => api.get<Summary>(`/analytics/summary?month=${month}`),
+  });
+}
+
+export function useTrend(months: number) {
+  return useQuery({
+    queryKey: ["trend", months],
+    queryFn: () => api.get<Trend>(`/analytics/trend?months=${months}`),
+  });
+}
+
+function useInvalidateData() {
+  const qc = useQueryClient();
+  return () => {
+    qc.invalidateQueries({ queryKey: ["transactions"] });
+    qc.invalidateQueries({ queryKey: ["summary"] });
+    qc.invalidateQueries({ queryKey: ["trend"] });
+    qc.invalidateQueries({ queryKey: ["accounts"] });
+  };
+}
+
+export function useQuickAdd() {
+  const invalidate = useInvalidateData();
+  return useMutation({
+    mutationFn: (text: string) =>
+      api.post<Transaction>("/transactions/quick", { text }),
+    onSuccess: invalidate,
+  });
+}
+
+export function useCreateTransaction() {
+  const invalidate = useInvalidateData();
+  return useMutation({
+    mutationFn: (body: Record<string, unknown>) =>
+      api.post<Transaction>("/transactions", body),
+    onSuccess: invalidate,
+  });
+}
+
+export function useUpdateTransaction() {
+  const invalidate = useInvalidateData();
+  return useMutation({
+    mutationFn: ({ id, body }: { id: number; body: Record<string, unknown> }) =>
+      api.patch<Transaction>(`/transactions/${id}`, body),
+    onSuccess: invalidate,
+  });
+}
+
+export function useDeleteTransaction() {
+  const invalidate = useInvalidateData();
+  return useMutation({
+    mutationFn: (id: number) => api.del(`/transactions/${id}`),
+    onSuccess: invalidate,
+  });
+}
+
+export function useOcr() {
+  return useMutation({
+    mutationFn: (file: File) => {
+      const form = new FormData();
+      form.append("file", file);
+      return api.postForm<OCRResult>("/transactions/ocr", form);
+    },
+  });
+}
+
+export function useSaveCategory() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, body }: { id?: number; body: Record<string, unknown> }) =>
+      id
+        ? api.patch<Category>(`/categories/${id}`, body)
+        : api.post<Category>("/categories", body),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["categories"] }),
+  });
+}
+
+export function useDeleteCategory() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => api.del(`/categories/${id}`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["categories"] }),
+  });
+}
+
+export function useSaveAccount() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, body }: { id?: number; body: Record<string, unknown> }) =>
+      id
+        ? api.patch<Account>(`/accounts/${id}`, body)
+        : api.post<Account>("/accounts", body),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["accounts"] }),
+  });
+}
+
+export function useDeleteAccount() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => api.del(`/accounts/${id}`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["accounts"] }),
+  });
+}

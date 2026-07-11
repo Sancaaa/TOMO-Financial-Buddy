@@ -6,17 +6,21 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user
+from app.core.clock import now_local
 from app.core.config import settings
 from app.core.database import get_db
-from app.models import Transaction
+from app.models import Account, Transaction
 from app.schemas.receipt import OCRDraft, OCRItem, OCRResult
 from app.schemas.transaction import (
     TransactionCreate,
     TransactionList,
     TransactionOut,
+    TransactionQuick,
     TransactionUpdate,
 )
+from app.services.categorizer import suggest_category
 from app.services.ledger import apply_balance
+from app.services.parser import parse_quick_input
 from app.services.receipts import build_draft, process_receipt
 
 router = APIRouter(
@@ -86,6 +90,35 @@ def create_transaction(
     if data.get("occurred_at") is None:
         data["occurred_at"] = datetime.now(timezone.utc)
     tx = Transaction(**data)
+    db.add(tx)
+    db.flush()
+    apply_balance(db, tx, sign=1)
+    db.commit()
+    db.refresh(tx)
+    return tx
+
+
+@router.post("/quick", response_model=TransactionOut, status_code=status.HTTP_201_CREATED)
+def quick_add(payload: TransactionQuick, db: Session = Depends(get_db)) -> Transaction:
+    """Quick-add via teks bebas (mis. "makan 15k") — parser sama dengan bot."""
+    parsed = parse_quick_input(payload.text, now_local())
+    if parsed is None:
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_ENTITY,
+            "Nominal tidak terbaca. Contoh: makan 15k / gojek 24rb",
+        )
+    category = suggest_category(db, parsed.description, parsed.type)
+    account = db.scalars(select(Account).order_by(Account.id)).first()
+    tx = Transaction(
+        amount=parsed.amount,
+        type=parsed.type,
+        category_id=category.id if category else None,
+        account_id=account.id if account else None,
+        description=parsed.description or None,
+        occurred_at=parsed.occurred_at,
+        source="web",
+        raw_input=payload.text,
+    )
     db.add(tx)
     db.flush()
     apply_balance(db, tx, sign=1)

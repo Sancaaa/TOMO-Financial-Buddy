@@ -39,7 +39,9 @@ def _cleanup_db():
 
 @pytest.fixture()
 def client():
-    # `with` memicu lifespan: create_all + seed terhadap SQLite.
+    # Skema bersih tiap test agar tidak ada kontaminasi antar-test; `with` memicu
+    # lifespan (create_all + seed) sehingga DB kembali fresh + terisi seed.
+    Base.metadata.drop_all(bind=engine)
     with TestClient(app) as c:
         yield c
 

@@ -12,6 +12,11 @@ venv/
 # Data lokal
 receipts/
 *.sqlite3
+dev.db
+
+# Web (Node)
+node_modules/
+web/dist/
 
 # OS / editor
 .DS_Store

@@ -15,12 +15,15 @@ services:
       retries: 10
 
   api:
-    build: ./backend
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
     restart: unless-stopped
     env_file: .env
     environment:
       DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-finance}:${POSTGRES_PASSWORD:-finance}@db:5432/${POSTGRES_DB:-finance}
       RECEIPTS_DIR: /data/receipts
+      STATIC_DIR: /app/web
     volumes:
       - receipts:/data/receipts
     depends_on:

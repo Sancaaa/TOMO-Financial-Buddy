@@ -53,3 +53,7 @@ class TransactionList(BaseModel):
     total: int
     limit: int
     offset: int
+
+
+class TransactionQuick(BaseModel):
+    text: str = Field(min_length=1)

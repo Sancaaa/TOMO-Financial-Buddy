@@ -31,6 +31,9 @@ class Settings(BaseSettings):
     receipts_dir: str = "/data/receipts"
     ocr_max_image_mb: int = 10
 
+    # Folder build web PWA yang disajikan FastAPI (kosong = tidak disajikan)
+    static_dir: str = ""
+
     # CORS — daftar origin dipisah koma, atau "*" untuk semua
     cors_origins: str = "*"
 

@@ -1,9 +1,0 @@
-# DOMAIN diambil dari environment (lihat .env).
-# - Produksi: set DOMAIN=finance.contohkamu.com  -> Caddy urus HTTPS otomatis
-# - Lokal:    biarkan DOMAIN=:80                 -> jalan di http://localhost
-{$DOMAIN} {
-	encode gzip
-
-	# Rate limit sederhana bisa ditambah di sini bila perlu.
-	reverse_proxy api:8000
-}
