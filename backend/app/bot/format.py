@@ -82,6 +82,7 @@ HELP_TEXT = (
     "Atau <b>kirim foto struk</b> — Tomo baca sendiri 📸\n\n"
     "Perintah:\n"
     "/hariini · /minggu · /bulan — ringkasan\n"
+    "/budget — lihat/atur budget (mis. <code>/budget makan 900rb</code>)\n"
     "/undo — hapus catatan terakhir\n"
     "/help — bantuan ini"
 )

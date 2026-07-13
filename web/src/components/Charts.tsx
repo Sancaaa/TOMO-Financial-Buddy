@@ -25,7 +25,7 @@ export function Donut({
 
   return (
     <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} role="img" aria-label="Donut kategori">
-      <circle cx={cx} cy={cx} r={r} fill="none" stroke="var(--beige)" strokeWidth={thickness} />
+      <circle cx={cx} cy={cx} r={r} fill="none" stroke="var(--cream-2)" strokeWidth={thickness} />
       <g transform={`rotate(-90 ${cx} ${cx})`}>
         {total > 0 &&
           data.map((d, i) => {
@@ -54,7 +54,7 @@ export function Donut({
           textAnchor="middle"
           dominantBaseline="central"
           fill="var(--ink)"
-          style={{ fontFamily: "var(--font-head)", fontWeight: 700, fontSize: 16 }}
+          style={{ fontFamily: "var(--ff-display)", fontWeight: 700, fontSize: 16 }}
         >
           {centerLabel}
         </text>

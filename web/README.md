@@ -6,11 +6,11 @@ di [../docs/DESIGN.md](../docs/DESIGN.md). Disajikan langsung oleh FastAPI di pr
 
 ## Halaman
 
-- **Beranda** — quick-add, ringkasan bulan berjalan, donut kategori, transaksi terbaru
-- **Riwayat** — filter (bulan, kategori, cari) + edit/hapus, muat lebih
-- **Tambah** — 3 mode: Cepat (`makan 15k`), Form lengkap, Struk 📸 (upload → OCR → konfirmasi)
-- **Analitik** — donut per kategori, tren 6 bulan, perbandingan vs bulan lalu
-- **Kelola** — CRUD kategori (+ budget) dan akun
+- **Beranda** — quick-add, safe-to-spend + progress budget total, ringkasan bulan, donut kategori, transaksi terbaru, progress target nabung
+- **Riwayat** — filter (bulan, kategori, cari) + edit/hapus, export CSV, muat lebih
+- **Tambah** — 4 mode: Cepat (`makan 15k`), Form lengkap, Struk 📸 (OCR), **Transfer** antar akun
+- **Analitik** — donut per kategori, budget per kategori (progress bar), tren 6 bulan, perbandingan
+- **Kelola** — CRUD kategori (+ budget + rollover), akun, budget total bulanan, transaksi berulang, target nabung
 
 ## Dev
 

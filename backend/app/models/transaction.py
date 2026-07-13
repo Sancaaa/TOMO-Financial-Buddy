@@ -19,6 +19,9 @@ class Transaction(Base):
     account_id: Mapped[int | None] = mapped_column(
         ForeignKey("accounts.id", ondelete="SET NULL"), nullable=True, index=True
     )
+    dest_account_id: Mapped[int | None] = mapped_column(
+        ForeignKey("accounts.id", ondelete="SET NULL"), nullable=True
+    )
     receipt_id: Mapped[int | None] = mapped_column(
         ForeignKey("receipts.id", ondelete="SET NULL"), nullable=True
     )
@@ -37,4 +40,9 @@ class Transaction(Base):
     )
 
     category: Mapped["Category | None"] = relationship(lazy="joined")
-    account: Mapped["Account | None"] = relationship(lazy="joined")
+    account: Mapped["Account | None"] = relationship(
+        "Account", foreign_keys="Transaction.account_id", lazy="joined"
+    )
+    dest_account: Mapped["Account | None"] = relationship(
+        "Account", foreign_keys="Transaction.dest_account_id", lazy="joined"
+    )

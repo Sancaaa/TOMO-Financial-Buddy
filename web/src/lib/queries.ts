@@ -2,8 +2,11 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "./api";
 import type {
   Account,
+  BudgetOverview,
   Category,
   OCRResult,
+  Recurring,
+  SavingGoal,
   Summary,
   Transaction,
   TransactionList,
@@ -66,7 +69,47 @@ function useInvalidateData() {
     qc.invalidateQueries({ queryKey: ["summary"] });
     qc.invalidateQueries({ queryKey: ["trend"] });
     qc.invalidateQueries({ queryKey: ["accounts"] });
+    qc.invalidateQueries({ queryKey: ["budgets"] });
   };
+}
+
+export function useBudgets(month?: string) {
+  return useQuery({
+    queryKey: ["budgets", month ?? "current"],
+    queryFn: () => api.get<BudgetOverview>(`/budgets${month ? `?period=${month}` : ""}`),
+  });
+}
+
+export function useSetBudget() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: { category_id: number | null; amount: number | null; period?: string | null }) =>
+      api.put<void>("/budgets", body),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["budgets"] });
+      qc.invalidateQueries({ queryKey: ["categories"] });
+    },
+  });
+}
+
+export function useRecurring() {
+  return useQuery({ queryKey: ["recurring"], queryFn: () => api.get<Recurring[]>("/recurring") });
+}
+
+export function useSaveRecurring() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: Record<string, unknown>) => api.post<Recurring>("/recurring", body),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["recurring"] }),
+  });
+}
+
+export function useDeleteRecurring() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => api.del(`/recurring/${id}`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["recurring"] }),
+  });
 }
 
 export function useQuickAdd() {
@@ -84,6 +127,45 @@ export function useCreateTransaction() {
     mutationFn: (body: Record<string, unknown>) =>
       api.post<Transaction>("/transactions", body),
     onSuccess: invalidate,
+  });
+}
+
+export function useTransfer() {
+  const invalidate = useInvalidateData();
+  return useMutation({
+    mutationFn: (body: Record<string, unknown>) =>
+      api.post<Transaction>("/transactions/transfer", body),
+    onSuccess: invalidate,
+  });
+}
+
+export function useGoals() {
+  return useQuery({ queryKey: ["goals"], queryFn: () => api.get<SavingGoal[]>("/goals") });
+}
+
+export function useSaveGoal() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, body }: { id?: number; body: Record<string, unknown> }) =>
+      id ? api.patch<SavingGoal>(`/goals/${id}`, body) : api.post<SavingGoal>("/goals", body),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["goals"] }),
+  });
+}
+
+export function useContributeGoal() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, amount }: { id: number; amount: number }) =>
+      api.post<SavingGoal>(`/goals/${id}/contribute`, { amount }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["goals"] }),
+  });
+}
+
+export function useDeleteGoal() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => api.del(`/goals/${id}`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["goals"] }),
   });
 }
 

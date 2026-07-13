@@ -21,6 +21,15 @@ class TransactionCreate(TransactionBase):
     source: str = "web"
     raw_input: str | None = None
     receipt_id: int | None = None
+    dest_account_id: int | None = None
+
+
+class TransferCreate(BaseModel):
+    amount: Decimal = Field(gt=0)
+    account_id: int
+    dest_account_id: int
+    description: str | None = Field(default=None, max_length=255)
+    occurred_at: datetime | None = None
 
 
 class TransactionUpdate(BaseModel):
@@ -42,8 +51,10 @@ class TransactionOut(BaseModel):
     occurred_at: datetime
     source: str
     created_at: datetime
+    dest_account_id: int | None = None
     category: CategoryOut | None = None
     account: AccountOut | None = None
+    dest_account: AccountOut | None = None
 
     model_config = {"from_attributes": True}
 

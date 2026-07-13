@@ -13,6 +13,11 @@ _STATEMENTS = [
     "ALTER TABLE transactions "
     "ADD COLUMN IF NOT EXISTS receipt_id INTEGER "
     "REFERENCES receipts(id) ON DELETE SET NULL",
+    "ALTER TABLE transactions "
+    "ADD COLUMN IF NOT EXISTS dest_account_id INTEGER "
+    "REFERENCES accounts(id) ON DELETE SET NULL",
+    "ALTER TABLE categories "
+    "ADD COLUMN IF NOT EXISTS budget_rollover BOOLEAN DEFAULT FALSE",
 ]
 
 

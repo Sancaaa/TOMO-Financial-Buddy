@@ -8,3 +8,4 @@ python-jose[cryptography]==3.3.0
 bcrypt==4.2.1
 python-multipart==0.0.20
 google-genai==2.10.0
+apscheduler==3.11.3

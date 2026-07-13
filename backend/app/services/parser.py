@@ -110,6 +110,19 @@ def _clean_desc(s: str) -> str:
     return s.strip()
 
 
+def parse_amount(text: str) -> Decimal | None:
+    """Ambil nominal terbaik dari teks (mis. '900rb' -> 900000). None jika tak ada."""
+    best: tuple[tuple[bool, Decimal], Decimal] | None = None
+    for m in _TOKEN_RE.finditer((text or "").lower()):
+        value = _amount_value(m.group(1), m.group(2))
+        if value is None or value <= 0:
+            continue
+        key = (bool(m.group(2)), value)
+        if best is None or key > best[0]:
+            best = (key, value)
+    return best[1] if best else None
+
+
 def parse_quick_input(text: str, now: datetime) -> ParsedInput | None:
     """Kembalikan ParsedInput, atau None jika nominal tidak terbaca."""
     orig = (text or "").strip()

@@ -9,6 +9,7 @@ class CategoryBase(BaseModel):
     icon: str | None = None
     type: Literal["expense", "income"] = "expense"
     monthly_budget: Decimal | None = None
+    budget_rollover: bool = False
     parent_id: int | None = None
 
 
@@ -21,6 +22,7 @@ class CategoryUpdate(BaseModel):
     icon: str | None = None
     type: Literal["expense", "income"] | None = None
     monthly_budget: Decimal | None = None
+    budget_rollover: bool | None = None
     parent_id: int | None = None
 
 

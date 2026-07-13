@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Selamat, Kamu Berhasil 🍅</title>
+  <meta name="description" content="Perayaan kecil berbau tomat yang estetik dan hangat." />
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400;1,700&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
+
+  <!-- AOS (Animate on Scroll) -->
+  <link rel="stylesheet" href="https://unpkg.com/aos@2.3.4/dist/aos.css" />
+
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+
+  <!-- ── Grain texture overlay ── -->
+  <div class="grain"></div>
+
+  <!-- ── Floating decorative elements ── -->
+  <div class="deco deco--tl" aria-hidden="true">
+    <svg viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="60" cy="66" r="46" fill="#c0392b" opacity=".9"/>
+      <ellipse cx="60" cy="20" rx="10" ry="18" fill="#2e7d32" transform="rotate(-15 60 20)"/>
+      <ellipse cx="60" cy="20" rx="8" ry="14" fill="#388e3c" transform="rotate(15 60 20)"/>
+      <ellipse cx="45" cy="18" rx="6" ry="12" fill="#2e7d32" transform="rotate(-40 45 18)"/>
+      <circle cx="45" cy="75" r="10" fill="white" opacity=".07"/>
+      <circle cx="38" cy="58" r="6" fill="white" opacity=".05"/>
+    </svg>
+  </div>
+
+  <div class="deco deco--br" aria-hidden="true">
+    <svg viewBox="0 0 90 90" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="45" cy="50" r="34" fill="#e74c3c" opacity=".85"/>
+      <ellipse cx="45" cy="16" rx="7" ry="13" fill="#388e3c" transform="rotate(-10 45 16)"/>
+      <ellipse cx="45" cy="16" rx="6" ry="10" fill="#4caf50" transform="rotate(12 45 16)"/>
+    </svg>
+  </div>
+
+  <div class="deco deco--tr-leaf" aria-hidden="true">
+    <svg viewBox="0 0 60 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M30 78 C10 50 0 20 30 5 C60 20 50 50 30 78Z" fill="#4caf50" opacity=".55"/>
+      <line x1="30" y1="78" x2="30" y2="10" stroke="#2e7d32" stroke-width="1.5" opacity=".6"/>
+    </svg>
+  </div>
+
+  <!-- ── Scattered tomato pills ── -->
+  <span class="pill pill--1">🍅 buah atau sayur?</span>
+  <span class="pill pill--2">fresh ✦ ripe</span>
+  <span class="pill pill--3">tomat cinta</span>
+
+  <!-- ── Page wrapper ── -->
+  <main class="page">
+
+    <!-- Hero headline -->
+    <section class="hero">
+      <p class="hero__eyebrow" data-aos="fade-up" data-aos-duration="700" data-aos-delay="100">sebuah perayaan kecil</p>
+
+      <h1 class="hero__title" data-aos="fade-up" data-aos-duration="800" data-aos-delay="200">
+        <span class="line line--italic">Selamat,</span>
+        <span class="line line--bold">Kamu</span>
+        <span class="line line--serif">Berhasil.</span>
+      </h1>
+
+      <!-- Inline tomato stamp -->
+      <div class="stamp-wrap" data-aos="zoom-in" data-aos-duration="600" data-aos-delay="500">
+        <div class="stamp" id="stamp">
+          <span class="stamp__inner">🍅</span>
+          <svg class="stamp__ring" viewBox="0 0 120 120">
+            <defs>
+              <path id="circle-text" d="M 60,60 m -42,0 a 42,42 0 1,1 84,0 a 42,42 0 1,1 -84,0"/>
+            </defs>
+            <text font-size="11.5" fill="#c0392b" font-family="DM Sans, sans-serif" letter-spacing="4.5" font-weight="500">
+              <textPath href="#circle-text">✦ TOMATO CLUB ✦ CONGRATS ✦ YAY ✦&nbsp;</textPath>
+            </text>
+          </svg>
+        </div>
+      </div>
+
+      <p class="hero__sub" data-aos="fade-up" data-aos-duration="700" data-aos-delay="400">
+        Flag terakhir kamu adalah: <em>JarKomKece{Iyeayyy_T0m4t0_LuCu_B4ng3t}</em>
+      </p>
+    </section>
+
+    <!-- ── Collage strip ── -->
+    <section class="collage" data-aos="fade-up" data-aos-duration="800" data-aos-delay="100">
+
+      <div class="collage__card collage__card--rotate-neg">
+        <div class="collage__img">
+          <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+            <rect width="200" height="200" fill="#f9f0e6"/>
+            <circle cx="100" cy="115" r="70" fill="#e74c3c"/>
+            <ellipse cx="100" cy="46" rx="16" ry="26" fill="#388e3c" transform="rotate(-12 100 46)"/>
+            <ellipse cx="100" cy="46" rx="13" ry="22" fill="#4caf50" transform="rotate(14 100 46)"/>
+            <ellipse cx="78" cy="44" rx="10" ry="18" fill="#2e7d32" transform="rotate(-38 78 44)"/>
+            <circle cx="75" cy="125" r="18" fill="white" opacity=".08"/>
+            <circle cx="65" cy="105" r="10" fill="white" opacity=".06"/>
+          </svg>
+        </div>
+        <p class="collage__caption">fresh picked ✦</p>
+      </div>
+
+      <div class="collage__center">
+        <p class="collage__quote">"Kamu itu kaya tomat, lucu banget."</p>
+        <span class="collage__attr">— kebun belakang rumah</span>
+      </div>
+
+      <div class="collage__card collage__card--rotate-pos">
+        <div class="collage__img collage__img--small">
+          <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+            <rect width="200" height="200" fill="#ede8df"/>
+            <!-- basket of tomatoes -->
+            <ellipse cx="100" cy="148" rx="60" ry="20" fill="#a0522d"/>
+            <rect x="40" y="120" width="120" height="30" rx="8" fill="#c4813a"/>
+            <!-- tomatoes in basket -->
+            <circle cx="72" cy="118" r="22" fill="#e74c3c"/>
+            <circle cx="100" cy="113" r="24" fill="#c0392b"/>
+            <circle cx="130" cy="118" r="20" fill="#e74c3c"/>
+            <ellipse cx="100" cy="89" rx="8" ry="14" fill="#388e3c" transform="rotate(-8 100 89)"/>
+          </svg>
+        </div>
+        <p class="collage__caption">harvest day</p>
+      </div>
+
+    </section>
+
+    <!-- ── Fun fact strip ── -->
+    <section class="factstrip" data-aos="fade-up" data-aos-duration="700">
+      <div class="factstrip__item">
+        <span class="factstrip__num">01</span>
+        <p class="factstrip__text">Tomat adalah <strong>buah</strong> secara botani, tapi kamu tidak perlu berdebat soal itu sekarang.</p>
+      </div>
+      <div class="factstrip__divider">✦</div>
+      <div class="factstrip__item">
+        <span class="factstrip__num">02</span>
+        <p class="factstrip__text">Seperti tomat yang butuh waktu untuk <strong>matang</strong>, kamu juga butuh waktu, dan kamu berhasil.</p>
+      </div>
+      <div class="factstrip__divider">✦</div>
+      <div class="factstrip__item">
+        <span class="factstrip__num">03</span>
+        <p class="factstrip__text">Tomat paling merah berasal dari <strong>kerja keras</strong> dan sinar matahari. Sama seperti kamu.</p>
+      </div>
+    </section>
+
+    <!-- ── Footer ── -->
+    <footer class="footer" data-aos="fade-up" data-aos-duration="600">
+      <p class="footer__text">made with <span class="red">🍅</span></p>
+      <p class="footer__sub">Hakim Mumuchang & Kawan-kawan </p>
+    </footer>
+
+  </main>
+
+  <!-- AOS -->
+  <script src="https://unpkg.com/aos@2.3.4/dist/aos.js"></script>
+  <script src="js/script.js"></script>
+</body>
+</html>

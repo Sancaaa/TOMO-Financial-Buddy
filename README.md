@@ -6,11 +6,11 @@ Satu backend, tiga pintu masuk: Telegram bot, web app (PWA), dan Android.
 
 ## Fitur Utama
 
-- ⚡ **Quick-add**: ketik `makan 15k` di Telegram → tercatat lengkap dengan kategori otomatis
+- ⚡ **Quick-add**: ketik `makan 15k` di Telegram/web → tercatat lengkap dengan kategori otomatis
 - 📸 **OCR struk**: foto struk / screenshot e-wallet → transaksi draft tinggal dikonfirmasi
-- 📊 **Analitik**: dashboard tren, heatmap, perbandingan bulanan
-- 💰 **Budgeting**: budget per kategori, safe-to-spend harian, alert 80%/100%, proyeksi tanggal habis
-- 🔁 **Otomasi**: transaksi berulang (kos, langganan), daily digest, review akhir periode
+- 📊 **Analitik**: dashboard donut kategori, tren bulanan, perbandingan
+- 💰 **Budgeting**: budget per kategori + total, safe-to-spend harian, alert 80%/100%, proyeksi tanggal habis
+- 🔁 **Otomasi**: transaksi berulang (kos, langganan), daily digest, review akhir bulan, export CSV
 
 ## Dokumentasi
 
@@ -28,6 +28,9 @@ FastAPI · PostgreSQL · React + Vite PWA · Telegram Bot API (webhook) · Gemin
 - ✅ **Fase 2 — Telegram bot**: quick-add parser, auto-kategori yang belajar dari koreksi, tombol inline, ringkasan `/hariini` `/minggu` `/bulan`, `/undo`
 - ✅ **Fase 3 — OCR struk**: foto struk/screenshot e-wallet → LLM Vision → draft transaksi (di bot & web), foto tersimpan & bisa dilihat lagi
 - ✅ **Fase 4 — Web app (PWA)**: dashboard, riwayat + filter, tambah (cepat/form/OCR), analitik (donut + tren), kelola kategori & akun, installable. Disajikan langsung oleh FastAPI (satu origin), akses publik via Cloudflare Tunnel
-- ⏭️ **Fase 5 — Budgeting & otomasi** (berikutnya)
+- ✅ **Fase 4.5 — UI revamp + desktop**: identitas editorial hangat (Playfair + DM Sans, grain, tomat gambar-tangan, palet warm-only), layout desktop (sidebar + multi-kolom) selain mobile
+- ✅ **Fase 5 — Budgeting & otomasi**: budget per kategori + total, safe-to-spend, progress bar berwarna, `/budget` di bot, scheduler (recurring tx, digest harian, alert 80%/100%, review bulanan), export CSV
+- ✅ **Fase 6 — Ekstra**: transfer antar akun, saving goals (target nabung), rollover budget
+- ⏭️ **Sisa opsional**: siklus budget non-kalender, import CSV mutasi bank, split bill
 
-Kode di [backend/](backend/) (42 test lulus) dan [web/](web/). Lihat [backend/README.md](backend/README.md) dan [web/README.md](web/README.md) untuk cara menjalankan.
+Kode di [backend/](backend/) (60 test lulus) dan [web/](web/). Lihat [backend/README.md](backend/README.md) dan [web/README.md](web/README.md) untuk cara menjalankan.

@@ -34,6 +34,10 @@ class Settings(BaseSettings):
     # Folder build web PWA yang disajikan FastAPI (kosong = tidak disajikan)
     static_dir: str = ""
 
+    # Scheduler (recurring tx, digest harian, alert budget, review periode)
+    scheduler_enabled: bool = True
+    digest_hour: int = 21  # jam lokal untuk digest harian + cek alert
+
     # CORS — daftar origin dipisah koma, atau "*" untuk semua
     cors_origins: str = "*"
 

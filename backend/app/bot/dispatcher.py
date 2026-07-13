@@ -5,6 +5,7 @@ dan sebuah klien (punya send_message / edit_message_text / answer_callback_query
 Klien di-inject supaya test bisa memakai fake tanpa jaringan.
 """
 
+import re
 from datetime import datetime, timedelta
 
 from sqlalchemy import select
@@ -13,9 +14,11 @@ from sqlalchemy.orm import Session
 from app.bot import format as fmt
 from app.core.clock import LOCAL_TZ, now_local
 from app.models import Account, Category, Transaction
+from app.services.budget import overview, set_budget
 from app.services.categorizer import learn_from_correction, suggest_category
 from app.services.ledger import apply_balance
-from app.services.parser import parse_quick_input
+from app.services.money import month_label, rupiah
+from app.services.parser import parse_amount, parse_quick_input
 from app.services.receipts import build_draft, process_receipt
 from app.services.summary import period_summary
 
@@ -95,18 +98,72 @@ def _handle_quick_add(text: str, chat_id, db: Session, tg) -> None:
     db.commit()
     db.refresh(tx)
 
-    tg.send_message(
-        chat_id,
-        fmt.tx_confirmation(
-            amount=tx.amount,
-            ttype=tx.type,
-            description=tx.description or "",
-            category_name=category.name if category else None,
-            occurred_at=tx.occurred_at.astimezone(LOCAL_TZ),
-            now=now,
-        ),
-        reply_markup=fmt.confirm_keyboard(tx.id),
+    body = fmt.tx_confirmation(
+        amount=tx.amount,
+        ttype=tx.type,
+        description=tx.description or "",
+        category_name=category.name if category else None,
+        occurred_at=tx.occurred_at.astimezone(LOCAL_TZ),
+        now=now,
     )
+    if tx.type == "expense":
+        ov = overview(db)
+        if ov.safe_to_spend is not None and ov.days_left > 0:
+            body += f"\n💡 Aman jajan {rupiah(ov.safe_to_spend)}/hari sampai akhir bulan"
+    tg.send_message(chat_id, body, reply_markup=fmt.confirm_keyboard(tx.id))
+
+
+def _find_expense_category(db: Session, name: str) -> Category | None:
+    name = name.strip().lower()
+    cats = db.scalars(select(Category).where(Category.type == "expense")).all()
+    for c in cats:
+        if c.name.lower() == name:
+            return c
+    for c in cats:
+        if name and (name in c.name.lower() or c.name.lower() in name):
+            return c
+    return None
+
+
+def _budget_text(db: Session) -> str:
+    ov = overview(db)
+    emoji = {"ok": "🟢", "warn": "🟡", "over": "🔴"}
+    lines = [f"📊 <b>Budget {month_label(ov.period)}</b>"]
+    if ov.total_budget is not None:
+        pct = int(ov.total_spent / ov.total_budget * 100) if ov.total_budget else 0
+        lines.append(f"Total: {rupiah(ov.total_spent)} / {rupiah(ov.total_budget)} ({pct}%)")
+        if ov.safe_to_spend is not None and ov.days_left > 0:
+            lines.append(f"Aman jajan <b>{rupiah(ov.safe_to_spend)}</b>/hari ({ov.days_left} hari lagi)")
+    budgeted = [c for c in ov.categories if c.budget > 0]
+    if budgeted:
+        lines.append("")
+        for c in budgeted:
+            lines.append(f"{emoji.get(c.status, '🟢')} {c.name}: {rupiah(c.spent)}/{rupiah(c.budget)} ({c.pct}%)")
+    if ov.total_budget is None and not budgeted:
+        lines.append("Belum ada budget. Set: <code>/budget makan 900rb</code> atau <code>/budget total 2jt</code>")
+    return "\n".join(lines)
+
+
+def _handle_budget(arg: str, chat_id, db: Session, tg) -> None:
+    arg = arg.strip()
+    if not arg:
+        tg.send_message(chat_id, _budget_text(db))
+        return
+    amount = parse_amount(arg)
+    if amount is None:
+        tg.send_message(chat_id, "Format: <code>/budget makan 900rb</code> atau <code>/budget total 2jt</code>")
+        return
+    name = re.sub(r"\d[\d.,]*\s*(juta|ribu|jt|rb|k)?", "", arg, flags=re.IGNORECASE).strip()
+    if name.lower() in ("total", "semua", ""):
+        set_budget(db, None, amount, None)
+        tg.send_message(chat_id, f"✅ Budget total di-set <b>{rupiah(amount)}</b>/bulan.")
+        return
+    cat = _find_expense_category(db, name)
+    if cat is None:
+        tg.send_message(chat_id, f'Kategori "{name}" tak ketemu. Cek daftar di menu Kelola.')
+        return
+    set_budget(db, cat.id, amount, None)
+    tg.send_message(chat_id, f"✅ Budget {cat.name} di-set <b>{rupiah(amount)}</b>/bulan.")
 
 
 def _handle_photo(msg: dict, chat_id, db: Session, tg) -> None:
@@ -178,6 +235,9 @@ def _handle_command(text: str, chat_id, db: Session, tg) -> None:
         start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
         _, end = _day_bounds(now)
         tg.send_message(chat_id, fmt.summary_text("Bulan ini", period_summary(db, start, end)))
+    elif cmd == "budget":
+        parts = text.split(maxsplit=1)
+        _handle_budget(parts[1] if len(parts) > 1 else "", chat_id, db, tg)
     elif cmd == "undo":
         _handle_undo(chat_id, db, tg)
     else:

@@ -1,4 +1,5 @@
 import { useRef, useState } from "react";
+import { PageHead } from "../components/PageHead";
 import { rupiah, todayInput } from "../lib/format";
 import {
   useAccounts,
@@ -6,32 +7,33 @@ import {
   useCreateTransaction,
   useOcr,
   useQuickAdd,
+  useTransfer,
 } from "../lib/queries";
 import type { OCRResult } from "../lib/types";
 
-type Mode = "quick" | "form" | "ocr";
+type Mode = "quick" | "form" | "ocr" | "transfer";
 
 export function Add() {
   const [mode, setMode] = useState<Mode>("quick");
   const [flash, setFlash] = useState("");
 
   return (
-    <>
-      <div className="topbar">
-        <h1 className="grow">Tambah</h1>
-      </div>
+    <div className="narrow-sm">
+      <PageHead eyebrow="catat pengeluaran" title="Tambah" />
       <div className="seg">
         <button className={mode === "quick" ? "active" : ""} onClick={() => setMode("quick")}>Cepat</button>
         <button className={mode === "form" ? "active" : ""} onClick={() => setMode("form")}>Form</button>
         <button className={mode === "ocr" ? "active" : ""} onClick={() => setMode("ocr")}>Struk 📸</button>
+        <button className={mode === "transfer" ? "active" : ""} onClick={() => setMode("transfer")}>Transfer</button>
       </div>
 
-      {flash && <div className="card pad-sm" style={{ color: "var(--leaf-ink)" }}>✅ {flash}</div>}
+      {flash && <div className="card pad-sm" style={{ color: "var(--leaf-dark)" }}>✅ {flash}</div>}
 
       {mode === "quick" && <QuickMode onDone={setFlash} />}
       {mode === "form" && <FormMode onDone={setFlash} />}
       {mode === "ocr" && <OcrMode onDone={setFlash} />}
-    </>
+      {mode === "transfer" && <TransferMode onDone={setFlash} />}
+    </div>
   );
 }
 
@@ -221,5 +223,71 @@ function OcrMode({ onDone }: { onDone: (s: string) => void }) {
         </>
       )}
     </div>
+  );
+}
+
+function TransferMode({ onDone }: { onDone: (s: string) => void }) {
+  const { data: accounts } = useAccounts();
+  const transfer = useTransfer();
+  const [from, setFrom] = useState("");
+  const [to, setTo] = useState("");
+  const [amount, setAmount] = useState("");
+  const [description, setDescription] = useState("");
+  const [err, setErr] = useState("");
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    setErr("");
+    if (from === to) {
+      setErr("Akun asal dan tujuan harus beda.");
+      return;
+    }
+    try {
+      await transfer.mutateAsync({
+        amount: Number(amount),
+        account_id: Number(from),
+        dest_account_id: Number(to),
+        description: description || null,
+      });
+      const names = (accounts ?? []).reduce<Record<string, string>>((m, a) => ((m[a.id] = a.name), m), {});
+      onDone(`${rupiah(amount)} dipindah ${names[from]} → ${names[to]}`);
+      setAmount("");
+      setDescription("");
+    } catch (e2) {
+      setErr(e2 instanceof Error ? e2.message : "Gagal");
+    }
+  }
+
+  return (
+    <form className="card stack" onSubmit={submit}>
+      <div className="row">
+        <div className="field">
+          <label>Dari akun</label>
+          <select value={from} onChange={(e) => setFrom(e.target.value)}>
+            <option value="">— pilih —</option>
+            {(accounts ?? []).map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
+          </select>
+        </div>
+        <div className="field">
+          <label>Ke akun</label>
+          <select value={to} onChange={(e) => setTo(e.target.value)}>
+            <option value="">— pilih —</option>
+            {(accounts ?? []).map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
+          </select>
+        </div>
+      </div>
+      <div className="field">
+        <label>Jumlah (Rp)</label>
+        <input inputMode="numeric" value={amount} onChange={(e) => setAmount(e.target.value.replace(/\D/g, ""))} />
+      </div>
+      <div className="field">
+        <label>Catatan</label>
+        <input value={description} onChange={(e) => setDescription(e.target.value)} placeholder="opsional" />
+      </div>
+      {err && <div className="err">{err}</div>}
+      <button className="btn btn-primary btn-block" disabled={transfer.isPending || !amount || !from || !to}>
+        {transfer.isPending ? "Memindahkan…" : "Pindahkan"}
+      </button>
+    </form>
   );
 }

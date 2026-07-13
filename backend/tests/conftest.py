@@ -10,6 +10,8 @@ os.environ["DATABASE_URL"] = f"sqlite:///{_DB_PATH.as_posix()}"
 os.environ["INITIAL_USERNAME"] = "admin"
 os.environ["INITIAL_PASSWORD"] = "admin123"
 os.environ["JWT_SECRET"] = "test-secret"
+os.environ["SCHEDULER_ENABLED"] = "false"
+os.environ["TZ_OFFSET_HOURS"] = "7"
 _RECEIPTS_DIR = Path(__file__).parent / "_receipts"
 os.environ["RECEIPTS_DIR"] = str(_RECEIPTS_DIR)
 

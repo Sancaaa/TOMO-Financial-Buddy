@@ -10,8 +10,12 @@ from app.api import (
     accounts,
     analytics,
     auth,
+    budgets,
     categories,
+    export,
+    goals,
     receipts,
+    recurring,
     telegram,
     transactions,
 )
@@ -42,13 +46,24 @@ async def lifespan(app: FastAPI):
     ensure_schema(engine)  # tambah kolom baru pada tabel lama (Postgres)
     with SessionLocal() as db:
         seed(db)
-    yield
+
+    scheduler = None
+    if settings.scheduler_enabled:
+        from app.scheduler import build_scheduler
+
+        scheduler = build_scheduler()
+        scheduler.start()
+    try:
+        yield
+    finally:
+        if scheduler is not None:
+            scheduler.shutdown(wait=False)
 
 
 app = FastAPI(
     title="TOMO API",
-    version="0.4.0",
-    description="Backend TOMO (友) — finance tracker: auth, transaksi, kategori, akun, analitik, bot Telegram, OCR struk, web PWA.",
+    version="0.6.0",
+    description="Backend TOMO (友) — finance tracker: auth, transaksi, transfer, kategori, akun, analitik, budgeting (+rollover), saving goals, otomasi, bot Telegram, OCR struk, web PWA.",
     lifespan=lifespan,
 )
 
@@ -66,6 +81,10 @@ app.include_router(categories.router)
 app.include_router(accounts.router)
 app.include_router(receipts.router)
 app.include_router(analytics.router)
+app.include_router(budgets.router)
+app.include_router(recurring.router)
+app.include_router(goals.router)
+app.include_router(export.router)
 app.include_router(telegram.router)
 
 

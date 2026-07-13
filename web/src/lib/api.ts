@@ -62,10 +62,29 @@ export const api = {
     }),
   postForm: <T>(path: string, form: FormData) =>
     req<T>(path, { method: "POST", body: form }),
+  put: <T>(path: string, body: unknown) =>
+    req<T>(path, { method: "PUT", body: JSON.stringify(body) }),
   patch: <T>(path: string, body: unknown) =>
     req<T>(path, { method: "PATCH", body: JSON.stringify(body) }),
   del: (path: string) => req<void>(path, { method: "DELETE" }),
 };
+
+export async function downloadCsv(month?: string): Promise<void> {
+  const qs = month ? `?month=${month}` : "";
+  const res = await fetch(BASE + `/export${qs}`, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+  if (!res.ok) throw new ApiError(res.status, "Gagal export");
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `tomo-${month || "semua"}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
 
 export async function login(username: string, password: string): Promise<void> {
   const body = new URLSearchParams({ username, password });

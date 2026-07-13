@@ -15,6 +15,20 @@ export function TxList({
   return (
     <div className="txlist">
       {items.map((tx) => {
+        if (tx.type === "transfer") {
+          return (
+            <button key={tx.id} className="tx" onClick={() => onSelect?.(tx)}>
+              <span className="dot" style={{ background: "var(--ink-muted)" }} />
+              <span className="body">
+                <span className="desc">
+                  {tx.account?.name ?? "?"} → {tx.dest_account?.name ?? "?"}
+                </span>
+                <span className="meta">Transfer · {dateLabel(tx.occurred_at)}</span>
+              </span>
+              <span className="amt">{rupiah(tx.amount)}</span>
+            </button>
+          );
+        }
         const income = tx.type === "income";
         const catName = tx.category?.name ?? (income ? "Pemasukan" : "Lainnya");
         return (

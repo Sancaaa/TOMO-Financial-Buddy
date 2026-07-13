@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { TxList } from "../components/TxList";
 import { TxEditSheet } from "../components/TxEditSheet";
+import { PageHead } from "../components/PageHead";
+import { downloadCsv } from "../lib/api";
 import { currentMonth } from "../lib/format";
 import { useCategories, useTransactions } from "../lib/queries";
 import type { Transaction } from "../lib/types";
@@ -24,10 +26,8 @@ export function History() {
   const items = list.data?.items ?? [];
 
   return (
-    <>
-      <div className="topbar">
-        <h1 className="grow">Riwayat</h1>
-      </div>
+    <div className="narrow">
+      <PageHead eyebrow="semua catatan" title="Riwayat" />
 
       <div className="card pad-sm stack">
         <div className="row">
@@ -54,7 +54,10 @@ export function History() {
       </div>
 
       <div className="card">
-        <div className="section-title">{total} transaksi</div>
+        <div className="between" style={{ marginBottom: 6 }}>
+          <div className="section-title" style={{ margin: 0 }}>{total} transaksi</div>
+          <button className="btn btn-sm" onClick={() => downloadCsv(month || undefined)}>Export CSV</button>
+        </div>
         <TxList items={items} onSelect={setSelected} />
         {items.length < total && (
           <button className="btn btn-block" style={{ marginTop: 12 }} onClick={() => setLimit((l) => l + 30)}>
@@ -64,6 +67,6 @@ export function History() {
       </div>
 
       {selected && <TxEditSheet tx={selected} onClose={() => setSelected(null)} />}
-    </>
+    </div>
   );
 }

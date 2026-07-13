@@ -17,6 +17,7 @@ from app.schemas.transaction import (
     TransactionOut,
     TransactionQuick,
     TransactionUpdate,
+    TransferCreate,
 )
 from app.services.categorizer import suggest_category
 from app.services.ledger import apply_balance
@@ -118,6 +119,30 @@ def quick_add(payload: TransactionQuick, db: Session = Depends(get_db)) -> Trans
         occurred_at=parsed.occurred_at,
         source="web",
         raw_input=payload.text,
+    )
+    db.add(tx)
+    db.flush()
+    apply_balance(db, tx, sign=1)
+    db.commit()
+    db.refresh(tx)
+    return tx
+
+
+@router.post("/transfer", response_model=TransactionOut, status_code=status.HTTP_201_CREATED)
+def create_transfer(payload: TransferCreate, db: Session = Depends(get_db)) -> Transaction:
+    """Pindah saldo antar akun (bukan pengeluaran/pemasukan)."""
+    if payload.account_id == payload.dest_account_id:
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_ENTITY, "Akun asal dan tujuan harus beda"
+        )
+    tx = Transaction(
+        amount=payload.amount,
+        type="transfer",
+        account_id=payload.account_id,
+        dest_account_id=payload.dest_account_id,
+        description=payload.description,
+        occurred_at=payload.occurred_at or datetime.now(timezone.utc),
+        source="web",
     )
     db.add(tx)
     db.flush()
