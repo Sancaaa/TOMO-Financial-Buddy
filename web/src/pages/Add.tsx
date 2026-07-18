@@ -149,11 +149,13 @@ function FormMode({ onDone }: { onDone: (s: string) => void }) {
 function OcrMode({ onDone }: { onDone: (s: string) => void }) {
   const ocr = useOcr();
   const create = useCreateTransaction();
+  const { data: accounts } = useAccounts();
   const fileRef = useRef<HTMLInputElement>(null);
   const [result, setResult] = useState<OCRResult | null>(null);
   const [amount, setAmount] = useState("");
   const [description, setDescription] = useState("");
   const [categoryId, setCategoryId] = useState<number | null>(null);
+  const [accountId, setAccountId] = useState("");
   const [err, setErr] = useState("");
 
   async function onFile(e: React.ChangeEvent<HTMLInputElement>) {
@@ -176,10 +178,13 @@ function OcrMode({ onDone }: { onDone: (s: string) => void }) {
 
   async function confirm() {
     if (!result?.draft) return;
+    // account_id wajib ada agar saldo ikut berkurang (tanpa akun, apply_balance no-op).
+    const resolvedAccount = accountId ? Number(accountId) : accounts?.[0]?.id ?? null;
     await create.mutateAsync({
       type: "expense",
       amount: Number(amount),
       category_id: categoryId,
+      account_id: resolvedAccount,
       description: description || null,
       occurred_at: result.draft.occurred_at,
       source: "ocr",
@@ -216,6 +221,18 @@ function OcrMode({ onDone }: { onDone: (s: string) => void }) {
           <div className="field">
             <label>Deskripsi</label>
             <input value={description} onChange={(e) => setDescription(e.target.value)} />
+          </div>
+          <div className="field">
+            <label>Akun</label>
+            <select
+              value={accountId || (accounts?.[0] ? String(accounts[0].id) : "")}
+              onChange={(e) => setAccountId(e.target.value)}
+            >
+              {(accounts ?? []).map((a) => (
+                <option key={a.id} value={a.id}>{a.name}</option>
+              ))}
+            </select>
+            <span className="hint">Saldo akun ini yang akan berkurang.</span>
           </div>
           <button className="btn btn-primary btn-block" onClick={confirm} disabled={create.isPending || !amount}>
             {create.isPending ? "Menyimpan…" : "Simpan transaksi"}

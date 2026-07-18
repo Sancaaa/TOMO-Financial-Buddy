@@ -1,10 +1,11 @@
 import { useState } from "react";
 import { Sheet } from "./Sheet";
-import { useCategories, useDeleteTransaction, useUpdateTransaction } from "../lib/queries";
+import { useAccounts, useCategories, useDeleteTransaction, useUpdateTransaction } from "../lib/queries";
 import type { Transaction } from "../lib/types";
 
 export function TxEditSheet({ tx, onClose }: { tx: Transaction; onClose: () => void }) {
   const { data: categories } = useCategories();
+  const { data: accounts } = useAccounts();
   const update = useUpdateTransaction();
   const remove = useDeleteTransaction();
 
@@ -12,6 +13,7 @@ export function TxEditSheet({ tx, onClose }: { tx: Transaction; onClose: () => v
   const [amount, setAmount] = useState(String(Math.round(Number(tx.amount))));
   const [description, setDescription] = useState(tx.description ?? "");
   const [categoryId, setCategoryId] = useState<string>(tx.category_id ? String(tx.category_id) : "");
+  const [accountId, setAccountId] = useState<string>(tx.account_id ? String(tx.account_id) : "");
   const [date, setDate] = useState(tx.occurred_at.slice(0, 10));
 
   const catOptions = (categories ?? []).filter(
@@ -26,6 +28,7 @@ export function TxEditSheet({ tx, onClose }: { tx: Transaction; onClose: () => v
         amount: Number(amount),
         description: description || null,
         category_id: categoryId ? Number(categoryId) : null,
+        account_id: accountId ? Number(accountId) : null,
         occurred_at: new Date(date + "T12:00:00").toISOString(),
       },
     });
@@ -71,6 +74,18 @@ export function TxEditSheet({ tx, onClose }: { tx: Transaction; onClose: () => v
           <label>Tanggal</label>
           <input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
         </div>
+      </div>
+      <div className="field">
+        <label>Akun</label>
+        <select value={accountId} onChange={(e) => setAccountId(e.target.value)}>
+          <option value="">— tanpa —</option>
+          {(accounts ?? []).map((a) => (
+            <option key={a.id} value={a.id}>
+              {a.name}
+            </option>
+          ))}
+        </select>
+        <span className="hint">Ubah akun → saldo lama dikembalikan, saldo akun baru berkurang.</span>
       </div>
       <button className="btn btn-primary btn-block" onClick={save} disabled={update.isPending || !amount}>
         {update.isPending ? "Menyimpan…" : "Simpan"}
