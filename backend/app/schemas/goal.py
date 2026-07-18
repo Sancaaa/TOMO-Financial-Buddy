@@ -9,16 +9,19 @@ class GoalCreate(BaseModel):
     target_amount: Decimal = Field(gt=0)
     saved_amount: Decimal = Decimal("0")
     target_date: date | None = None
+    account_id: int | None = None  # akun tabungan (opsional)
 
 
 class GoalUpdate(BaseModel):
     name: str | None = Field(default=None, min_length=1, max_length=80)
     target_amount: Decimal | None = Field(default=None, gt=0)
     target_date: date | None = None
+    account_id: int | None = None  # set/ganti/kosongkan akun tabungan
 
 
 class GoalContribute(BaseModel):
     amount: Decimal  # boleh negatif untuk menarik
+    from_account_id: int | None = None  # akun sumber (untuk pindah uang riil)
 
 
 class GoalOut(BaseModel):
@@ -27,5 +30,6 @@ class GoalOut(BaseModel):
     target_amount: Decimal
     saved_amount: Decimal
     target_date: date | None
+    account_id: int | None
     pct: int
     achieved: bool

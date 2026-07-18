@@ -1,8 +1,11 @@
+import logging
 import os
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy import select
+from sqlalchemy.orm import Session
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.staticfiles import StaticFiles
 
@@ -22,10 +25,45 @@ from app.api import (
 from app.core.database import Base, SessionLocal, engine
 from app.core.config import settings
 from app.core.schema_sync import ensure_schema
+from app.core.security import verify_password
+from app.models import User
 from app.seed import seed
 
 # pastikan semua model terdaftar di metadata sebelum create_all
 import app.models  # noqa: F401
+
+log = logging.getLogger("tomo.security")
+
+_DEFAULT_JWT_SECRET = "change-me-in-production"
+_DEFAULT_PASSWORD = "changeme"
+
+
+def _check_security(db: Session) -> None:
+    """Cegah deploy dengan kredensial/secret default.
+
+    - JWT_SECRET default + STATIC_DIR di-set (menyajikan PWA publik) → gagalkan startup.
+      Tanpa STATIC_DIR (mis. dev/test) cukup peringatan.
+    - User pertama masih pakai password default 'changeme' → peringatan.
+    """
+    if settings.jwt_secret == _DEFAULT_JWT_SECRET:
+        msg = (
+            "JWT_SECRET masih memakai nilai default yang tidak aman. Set JWT_SECRET "
+            'yang kuat di .env. Contoh: python -c "import secrets; '
+            'print(secrets.token_urlsafe(48))"'
+        )
+        if settings.static_dir:
+            raise RuntimeError(
+                msg + " — wajib karena STATIC_DIR di-set (akses publik)."
+            )
+        log.warning(msg)
+
+    user = db.scalar(select(User).order_by(User.id))
+    if user is not None and verify_password(_DEFAULT_PASSWORD, user.password_hash):
+        log.warning(
+            "User '%s' masih memakai password default. Ganti via "
+            "POST /auth/change-password.",
+            user.username,
+        )
 
 
 class SPAStaticFiles(StaticFiles):
@@ -46,6 +84,7 @@ async def lifespan(app: FastAPI):
     ensure_schema(engine)  # tambah kolom baru pada tabel lama (Postgres)
     with SessionLocal() as db:
         seed(db)
+        _check_security(db)
 
     scheduler = None
     if settings.scheduler_enabled:

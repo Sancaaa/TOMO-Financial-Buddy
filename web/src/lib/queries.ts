@@ -154,10 +154,14 @@ export function useSaveGoal() {
 
 export function useContributeGoal() {
   const qc = useQueryClient();
+  const invalidate = useInvalidateData();
   return useMutation({
-    mutationFn: ({ id, amount }: { id: number; amount: number }) =>
-      api.post<SavingGoal>(`/goals/${id}/contribute`, { amount }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["goals"] }),
+    mutationFn: ({ id, amount, from_account_id }: { id: number; amount: number; from_account_id?: number | null }) =>
+      api.post<SavingGoal>(`/goals/${id}/contribute`, { amount, from_account_id: from_account_id ?? null }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["goals"] });
+      invalidate(); // saldo & riwayat berubah bila uang dipindah
+    },
   });
 }
 

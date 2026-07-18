@@ -108,3 +108,31 @@ def test_amount_must_be_positive(auth_client):
         "/transactions", json={"amount": -5, "type": "expense"}
     )
     assert resp.status_code == 422
+
+
+def test_month_window_consistent_history_vs_analytics(auth_client):
+    """Transaksi di batas bulan (dini hari lokal) harus ikut terhitung sama di
+    Riwayat maupun Analitik. Dulu Riwayat pakai batas UTC → total tidak cocok."""
+    account = auth_client.get("/accounts").json()[0]
+    # 02:00 waktu lokal (TZ_OFFSET_HOURS=7 di test) tgl 1 — di UTC ini jatuh ke
+    # bulan sebelumnya, jadi memicu bug lama bila batas tidak konsisten.
+    resp = auth_client.post(
+        "/transactions",
+        json={
+            "amount": 12345,
+            "type": "expense",
+            "account_id": account["id"],
+            "occurred_at": "2026-08-01T02:00:00+07:00",
+        },
+    )
+    assert resp.status_code == 201, resp.text
+
+    month = "2026-08"
+    hist = auth_client.get("/transactions", params={"month": month}).json()
+    hist_expense = sum(
+        float(t["amount"]) for t in hist["items"] if t["type"] == "expense"
+    )
+    summary = auth_client.get("/analytics/summary", params={"month": month}).json()
+
+    assert any(float(t["amount"]) == 12345 for t in hist["items"])
+    assert float(summary["total_expense"]) == hist_expense == 12345

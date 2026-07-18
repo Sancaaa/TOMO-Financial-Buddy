@@ -18,6 +18,9 @@ _STATEMENTS = [
     "REFERENCES accounts(id) ON DELETE SET NULL",
     "ALTER TABLE categories "
     "ADD COLUMN IF NOT EXISTS budget_rollover BOOLEAN DEFAULT FALSE",
+    "ALTER TABLE saving_goals "
+    "ADD COLUMN IF NOT EXISTS account_id INTEGER "
+    "REFERENCES accounts(id) ON DELETE SET NULL",
 ]
 
 

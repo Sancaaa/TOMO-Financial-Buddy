@@ -107,3 +107,60 @@ def test_goal_lifecycle(auth_client):
 
     assert auth_client.delete(f"/goals/{g['id']}").status_code == 204
     assert auth_client.get("/goals").json() == []
+
+
+def test_goal_contribution_moves_real_money(auth_client):
+    auth_client.post("/accounts", json={"name": "Tabungan", "type": "bank", "balance": 0})
+    accs = _accounts_by_name(auth_client)
+    cash, tab = accs["Cash"]["id"], accs["Tabungan"]["id"]
+
+    g = auth_client.post(
+        "/goals",
+        json={"name": "Liburan", "target_amount": 1000000, "account_id": tab},
+    ).json()
+    assert g["account_id"] == tab
+
+    # nabung 300k dari Cash → Cash -300k, Tabungan +300k, progres 300k (30%)
+    g2 = auth_client.post(
+        f"/goals/{g['id']}/contribute",
+        json={"amount": 300000, "from_account_id": cash},
+    ).json()
+    assert float(g2["saved_amount"]) == 300000 and g2["pct"] == 30
+    accs = _accounts_by_name(auth_client)
+    assert float(accs["Cash"]["balance"]) == -300000
+    assert float(accs["Tabungan"]["balance"]) == 300000
+
+    # tercatat sebagai transfer (bukan pengeluaran) di riwayat
+    summary = auth_client.get("/analytics/summary").json()
+    assert float(summary["total_expense"]) == 0
+    txs = auth_client.get("/transactions", params={"type": "transfer"}).json()
+    assert any(t["description"] == "Nabung: Liburan" for t in txs["items"])
+
+    # tarik 100k → Tabungan -100k, Cash +100k, progres 200k
+    g3 = auth_client.post(
+        f"/goals/{g['id']}/contribute",
+        json={"amount": -100000, "from_account_id": cash},
+    ).json()
+    assert float(g3["saved_amount"]) == 200000
+    accs = _accounts_by_name(auth_client)
+    assert float(accs["Cash"]["balance"]) == -200000
+    assert float(accs["Tabungan"]["balance"]) == 200000
+
+
+def test_goal_contribution_without_savings_account_rejected(auth_client):
+    cash = _accounts_by_name(auth_client)["Cash"]["id"]
+    g = auth_client.post(
+        "/goals", json={"name": "Tanpa akun", "target_amount": 500000}
+    ).json()
+    assert g["account_id"] is None
+    # kirim akun sumber padahal target tak punya akun tabungan → 422
+    resp = auth_client.post(
+        f"/goals/{g['id']}/contribute",
+        json={"amount": 1000, "from_account_id": cash},
+    )
+    assert resp.status_code == 422
+    # tanpa akun sumber tetap boleh (mode counter)
+    g2 = auth_client.post(
+        f"/goals/{g['id']}/contribute", json={"amount": 1000}
+    ).json()
+    assert float(g2["saved_amount"]) == 1000

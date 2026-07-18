@@ -1,12 +1,12 @@
 ﻿from calendar import monthrange
-from datetime import datetime, timezone
+from datetime import datetime
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user
-from app.core.clock import now_local
+from app.core.clock import LOCAL_TZ, now_local
 from app.core.config import settings
 from app.core.database import get_db
 from app.models import Account, Transaction
@@ -32,12 +32,17 @@ router = APIRouter(
 
 
 def _month_range(month: str) -> tuple[datetime, datetime]:
-    """Ubah 'YYYY-MM' menjadi rentang [awal, akhir) bulan tersebut (UTC)."""
+    """Ubah 'YYYY-MM' menjadi rentang [awal, akhir] bulan tersebut (zona lokal).
+
+    Batas dihitung di LOCAL_TZ agar konsisten dengan analitik & budget
+    (lihat summary._month_bounds / budget._bounds), sehingga total di Riwayat
+    cocok dengan total di Analitik untuk transaksi di sekitar batas bulan.
+    """
     try:
         year, mon = (int(x) for x in month.split("-"))
-        start = datetime(year, mon, 1, tzinfo=timezone.utc)
+        start = datetime(year, mon, 1, tzinfo=LOCAL_TZ)
         last_day = monthrange(year, mon)[1]
-        end = datetime(year, mon, last_day, 23, 59, 59, 999999, tzinfo=timezone.utc)
+        end = datetime(year, mon, last_day, 23, 59, 59, 999999, tzinfo=LOCAL_TZ)
     except (ValueError, IndexError):
         raise HTTPException(
             status.HTTP_422_UNPROCESSABLE_ENTITY,
@@ -89,7 +94,7 @@ def create_transaction(
 ) -> Transaction:
     data = payload.model_dump()
     if data.get("occurred_at") is None:
-        data["occurred_at"] = datetime.now(timezone.utc)
+        data["occurred_at"] = now_local()
     tx = Transaction(**data)
     db.add(tx)
     db.flush()
@@ -141,7 +146,7 @@ def create_transfer(payload: TransferCreate, db: Session = Depends(get_db)) -> T
         account_id=payload.account_id,
         dest_account_id=payload.dest_account_id,
         description=payload.description,
-        occurred_at=payload.occurred_at or datetime.now(timezone.utc),
+        occurred_at=payload.occurred_at or now_local(),
         source="web",
     )
     db.add(tx)

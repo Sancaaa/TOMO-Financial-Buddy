@@ -358,14 +358,21 @@ function GoalsCard() {
 
 function GoalSheet({ goal, onClose }: { goal: Partial<SavingGoal>; onClose: () => void }) {
   const save = useSaveGoal();
+  const { data: accounts } = useAccounts();
   const [name, setName] = useState(goal.name ?? "");
   const [target, setTarget] = useState(goal.target_amount ? String(Math.round(Number(goal.target_amount))) : "");
   const [date, setDate] = useState(goal.target_date ?? "");
+  const [accountId, setAccountId] = useState(goal.account_id != null ? String(goal.account_id) : "");
 
   async function submit() {
     await save.mutateAsync({
       id: goal.id,
-      body: { name, target_amount: Number(target), target_date: date || null },
+      body: {
+        name,
+        target_amount: Number(target),
+        target_date: date || null,
+        account_id: accountId ? Number(accountId) : null,
+      },
     });
     onClose();
   }
@@ -386,6 +393,14 @@ function GoalSheet({ goal, onClose }: { goal: Partial<SavingGoal>; onClose: () =
           <input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
         </div>
       </div>
+      <div className="field">
+        <label>Akun tabungan (opsional)</label>
+        <select value={accountId} onChange={(e) => setAccountId(e.target.value)}>
+          <option value="">— hanya catatan —</option>
+          {(accounts ?? []).map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
+        </select>
+        <span className="hint">Kalau dipilih, uang beneran dipindah ke sini saat nabung.</span>
+      </div>
       <button className="btn btn-primary btn-block" onClick={submit} disabled={save.isPending || !name || !target}>Simpan</button>
     </Sheet>
   );
@@ -393,20 +408,49 @@ function GoalSheet({ goal, onClose }: { goal: Partial<SavingGoal>; onClose: () =
 
 function ContributeSheet({ goal, onClose }: { goal: SavingGoal; onClose: () => void }) {
   const contribute = useContributeGoal();
+  const { data: accounts } = useAccounts();
   const [amount, setAmount] = useState("");
+  const [err, setErr] = useState("");
+  // sumber tidak boleh sama dengan akun tabungan target
+  const sources = (accounts ?? []).filter((a) => a.id !== goal.account_id);
+  const [fromId, setFromId] = useState("");
+  const linked = goal.account_id != null;
+  const savingsAcc = (accounts ?? []).find((a) => a.id === goal.account_id);
 
   async function go(sign: number) {
-    await contribute.mutateAsync({ id: goal.id, amount: sign * Number(amount) });
-    onClose();
+    setErr("");
+    try {
+      await contribute.mutateAsync({
+        id: goal.id,
+        amount: sign * Number(amount),
+        from_account_id: linked && fromId ? Number(fromId) : null,
+      });
+      onClose();
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Gagal");
+    }
   }
 
   return (
     <Sheet title={`Nabung: ${goal.name}`} onClose={onClose}>
       <p className="hint">Terkumpul {rupiah(goal.saved_amount)} dari {rupiah(goal.target_amount)}.</p>
+      {linked ? (
+        <div className="field">
+          <label>Ambil dari akun</label>
+          <select value={fromId} onChange={(e) => setFromId(e.target.value)}>
+            <option value="">— hanya catat progres —</option>
+            {sources.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
+          </select>
+          <span className="hint">Uang dipindah {savingsAcc ? `ke ${savingsAcc.name}` : "ke akun tabungan"}.</span>
+        </div>
+      ) : (
+        <p className="hint">Target ini belum terhubung akun tabungan — progres cuma dicatat. Hubungkan lewat "Edit" untuk memindah uang beneran.</p>
+      )}
       <div className="field">
         <label>Jumlah (Rp)</label>
         <input inputMode="numeric" value={amount} onChange={(e) => setAmount(e.target.value.replace(/\D/g, ""))} />
       </div>
+      {err && <div className="err">{err}</div>}
       <div className="row">
         <button className="btn btn-primary" onClick={() => go(1)} disabled={contribute.isPending || !amount}>+ Nabung</button>
         <button className="btn" onClick={() => go(-1)} disabled={contribute.isPending || !amount}>− Tarik</button>

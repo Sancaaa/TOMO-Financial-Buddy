@@ -39,6 +39,7 @@ export interface SavingGoal {
   target_amount: string;
   saved_amount: string;
   target_date: string | null;
+  account_id: number | null;
   pct: number;
   achieved: boolean;
 }
