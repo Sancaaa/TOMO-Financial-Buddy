@@ -10,13 +10,15 @@ from app.services.summary import period_summary
 
 
 def build_daily_digest(db: Session, now: datetime) -> str:
-    day_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    # Dikirim pagi hari (08:00 lokal) → rekap hari kemarin yang baru saja selesai.
+    ref = now - timedelta(days=1)
+    day_start = ref.replace(hour=0, minute=0, second=0, microsecond=0)
     day_end = day_start + timedelta(days=1) - timedelta(microseconds=1)
-    today = period_summary(db, day_start, day_end)
+    yesterday = period_summary(db, day_start, day_end)
     ov = overview(db, current_period())
 
-    lines = ["🍅 <b>Kabar Tomo hari ini</b>"]
-    lines.append(f"Keluar hari ini: <b>{rupiah(today.total_expense)}</b>")
+    lines = ["🍅 <b>Kabar Tomo kemarin</b>"]
+    lines.append(f"Keluar kemarin: <b>{rupiah(yesterday.total_expense)}</b>")
     bulan = f"Bulan ini: {rupiah(ov.total_spent)}"
     if ov.total_budget is not None:
         bulan += f" / {rupiah(ov.total_budget)}"

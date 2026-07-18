@@ -26,8 +26,9 @@ class Settings(BaseSettings):
 
     # OCR (LLM Vision via Google Gemini)
     gemini_api_key: str = ""
-    # Default hemat (free-tier); set ke gemini-2.5-pro untuk akurasi maksimal.
-    ocr_model: str = "gemini-2.5-flash"
+    # Alias "-latest" biar tak perlu ganti kode saat versi lama di-pensiun Google.
+    # Untuk akurasi maksimal pakai gemini-pro-latest.
+    ocr_model: str = "gemini-flash-latest"
     receipts_dir: str = "/data/receipts"
     ocr_max_image_mb: int = 10
 
@@ -36,7 +37,7 @@ class Settings(BaseSettings):
 
     # Scheduler (recurring tx, digest harian, alert budget, review periode)
     scheduler_enabled: bool = True
-    digest_hour: int = 21  # jam lokal untuk digest harian + cek alert
+    digest_hour: int = 8  # jam lokal untuk digest harian (rekap kemarin) + cek alert
 
     # CORS — daftar origin dipisah koma, atau "*" untuk semua
     cors_origins: str = "*"
