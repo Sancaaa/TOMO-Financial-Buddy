@@ -31,3 +31,18 @@ class NetWorthOut(BaseModel):
 
     total: Decimal
     accounts: list[AccountOut]
+
+
+class ReconcileChange(BaseModel):
+    id: int
+    name: str
+    before: Decimal
+    after: Decimal
+
+
+class ReconcileOut(BaseModel):
+    """Hasil rekonsiliasi: berapa akun dikoreksi + saldo terkini."""
+
+    corrected: int
+    changes: list[ReconcileChange]
+    accounts: list[AccountOut]

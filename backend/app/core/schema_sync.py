@@ -21,6 +21,8 @@ _STATEMENTS = [
     "ALTER TABLE saving_goals "
     "ADD COLUMN IF NOT EXISTS account_id INTEGER "
     "REFERENCES accounts(id) ON DELETE SET NULL",
+    "ALTER TABLE accounts "
+    "ADD COLUMN IF NOT EXISTS opening_balance NUMERIC(14, 2)",
 ]
 
 

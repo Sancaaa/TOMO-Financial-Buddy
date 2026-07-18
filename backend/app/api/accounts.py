@@ -7,7 +7,15 @@ from sqlalchemy.orm import Session
 from app.api.deps import get_current_user
 from app.core.database import get_db
 from app.models import Account
-from app.schemas.account import AccountCreate, AccountOut, AccountUpdate, NetWorthOut
+from app.schemas.account import (
+    AccountCreate,
+    AccountOut,
+    AccountUpdate,
+    NetWorthOut,
+    ReconcileChange,
+    ReconcileOut,
+)
+from app.services.ledger import reconcile_balances
 
 router = APIRouter(
     prefix="/accounts", tags=["accounts"], dependencies=[Depends(get_current_user)]
@@ -31,6 +39,18 @@ def net_worth(db: Session = Depends(get_db)) -> NetWorthOut:
     return NetWorthOut(total=total, accounts=accounts)
 
 
+@router.post("/reconcile", response_model=ReconcileOut)
+def reconcile(db: Session = Depends(get_db)) -> ReconcileOut:
+    """Hitung ulang saldo dari transaksi; koreksi bila ada yang meleset."""
+    changes = reconcile_balances(db)
+    accounts = list(db.scalars(select(Account).order_by(Account.name)).all())
+    return ReconcileOut(
+        corrected=len(changes),
+        changes=[ReconcileChange(**c) for c in changes],
+        accounts=accounts,
+    )
+
+
 @router.post("", response_model=AccountOut, status_code=status.HTTP_201_CREATED)
 def create_account(payload: AccountCreate, db: Session = Depends(get_db)) -> Account:
     account = Account(**payload.model_dump())
@@ -47,8 +67,12 @@ def update_account(
     account = db.get(Account, account_id)
     if account is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Akun tidak ditemukan")
-    for field, value in payload.model_dump(exclude_unset=True).items():
+    data = payload.model_dump(exclude_unset=True)
+    for field, value in data.items():
         setattr(account, field, value)
+    if "balance" in data:
+        # saldo diedit manual → jadikan kondisi baru sebagai baseline rekonsiliasi
+        account.opening_balance = None
     db.commit()
     db.refresh(account)
     return account

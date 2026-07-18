@@ -6,6 +6,7 @@ import type {
   Category,
   NetWorth,
   OCRResult,
+  ReconcileResult,
   Recurring,
   SavingGoal,
   Summary,
@@ -246,6 +247,17 @@ export function useDeleteAccount() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (id: number) => api.del(`/accounts/${id}`),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["accounts"] });
+      qc.invalidateQueries({ queryKey: ["networth"] });
+    },
+  });
+}
+
+export function useReconcile() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => api.post<ReconcileResult>("/accounts/reconcile"),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["accounts"] });
       qc.invalidateQueries({ queryKey: ["networth"] });

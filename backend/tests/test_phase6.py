@@ -4,8 +4,9 @@ from decimal import Decimal
 from sqlalchemy import select
 
 from app.core.clock import LOCAL_TZ, now_local
-from app.models import Category, Transaction
+from app.models import Account, Category, Transaction
 from app.services.budget import _prev_period, current_period, overview
+from app.services.ledger import apply_balance, reconcile_balances
 
 
 # ---------- Transfer antar akun ----------
@@ -171,6 +172,55 @@ def test_goal_contribution_moves_real_money(auth_client):
     accs = _accounts_by_name(auth_client)
     assert float(accs["Cash"]["balance"]) == -200000
     assert float(accs["Tabungan"]["balance"]) == 200000
+
+
+# ---------- Rekonsiliasi saldo ----------
+
+def test_reconcile_fixes_drift(db):
+    acc = Account(name="Dompet", type="cash", balance=Decimal(0))
+    db.add(acc)
+    db.commit()
+
+    # transaksi normal lewat apply_balance → saldo benar (50k)
+    tx = Transaction(amount=Decimal(50000), type="income", account_id=acc.id, occurred_at=now_local())
+    db.add(tx)
+    db.flush()
+    apply_balance(db, tx, sign=1)
+    db.commit()
+    assert acc.balance == Decimal(50000)
+
+    # run pertama: tetapkan baseline, tak ada koreksi
+    assert reconcile_balances(db) == []
+    assert acc.opening_balance == Decimal(0)
+
+    # DRIFT: transaksi masuk TANPA apply_balance (mis. import/bug)
+    ghost = Transaction(amount=Decimal(20000), type="expense", account_id=acc.id, occurred_at=now_local())
+    db.add(ghost)
+    db.commit()
+    assert acc.balance == Decimal(50000)  # saldo belum ikut turun → meleset
+
+    changes = reconcile_balances(db)
+    assert len(changes) == 1 and changes[0]["after"] == Decimal(30000)
+    db.refresh(acc)
+    assert acc.balance == Decimal(30000)  # 0 + 50k - 20k
+
+
+def test_reconcile_endpoint_and_manual_edit_rebaselines(auth_client):
+    acc = auth_client.post("/accounts", json={"name": "Bank", "type": "bank", "balance": 100000}).json()
+
+    # baseline: 0 dikoreksi
+    r = auth_client.post("/accounts/reconcile").json()
+    assert r["corrected"] == 0
+
+    # belanja 30k → saldo 70k
+    auth_client.post("/transactions", json={"amount": 30000, "type": "expense", "account_id": acc["id"]})
+
+    # edit saldo manual → 200k, harus jadi baseline baru (bukan ditimpa reconcile)
+    auth_client.patch(f"/accounts/{acc['id']}", json={"balance": 200000})
+    r2 = auth_client.post("/accounts/reconcile").json()
+    assert r2["corrected"] == 0
+    bal = next(a for a in r2["accounts"] if a["id"] == acc["id"])["balance"]
+    assert float(bal) == 200000
 
 
 def test_goal_contribution_without_savings_account_rejected(auth_client):

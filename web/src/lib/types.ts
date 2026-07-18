@@ -22,6 +22,12 @@ export interface NetWorth {
   accounts: Account[];
 }
 
+export interface ReconcileResult {
+  corrected: number;
+  changes: { id: number; name: string; before: string; after: string }[];
+  accounts: Account[];
+}
+
 export interface Transaction {
   id: number;
   amount: string;

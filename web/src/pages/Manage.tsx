@@ -15,6 +15,7 @@ import {
   useDeleteGoal,
   useDeleteRecurring,
   useGoals,
+  useReconcile,
   useRecurring,
   useSaveAccount,
   useSaveCategory,
@@ -27,8 +28,20 @@ import type { Account, Category, SavingGoal } from "../lib/types";
 export function Manage() {
   const { data: categories } = useCategories();
   const { data: accounts } = useAccounts();
+  const reconcile = useReconcile();
   const [editCat, setEditCat] = useState<Partial<Category> | null>(null);
   const [editAcc, setEditAcc] = useState<Partial<Account> | null>(null);
+  const [reconMsg, setReconMsg] = useState("");
+
+  async function doReconcile() {
+    setReconMsg("");
+    const r = await reconcile.mutateAsync();
+    setReconMsg(
+      r.corrected === 0
+        ? "Saldo semua akun sudah cocok ✓"
+        : `${r.corrected} akun disesuaikan dengan riwayat transaksi.`,
+    );
+  }
 
   return (
     <>
@@ -58,8 +71,14 @@ export function Manage() {
       <div className="card">
         <div className="between" style={{ marginBottom: 8 }}>
           <div className="section-title" style={{ margin: 0 }}>Akun</div>
-          <button className="btn btn-sm" onClick={() => setEditAcc({ type: "cash" })}>+ Tambah</button>
+          <div style={{ display: "flex", gap: 6 }}>
+            <button className="btn btn-sm" onClick={doReconcile} disabled={reconcile.isPending}>
+              {reconcile.isPending ? "…" : "Cocokkan saldo"}
+            </button>
+            <button className="btn btn-sm" onClick={() => setEditAcc({ type: "cash" })}>+ Tambah</button>
+          </div>
         </div>
+        {reconMsg && <p className="hint" style={{ marginBottom: 8 }}>{reconMsg}</p>}
         <div className="txlist">
           {(accounts ?? []).map((a) => (
             <button key={a.id} className="tx" onClick={() => setEditAcc(a)}>
@@ -71,6 +90,9 @@ export function Manage() {
             </button>
           ))}
         </div>
+        <p className="hint" style={{ marginTop: 6 }}>
+          "Cocokkan saldo" menghitung ulang saldo dari riwayat transaksi.
+        </p>
       </div>
         </div>
       </div>
