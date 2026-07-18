@@ -8,7 +8,7 @@ import { Tomato } from "../components/Tomato";
 import { BudgetBar } from "../components/BudgetBar";
 import { categoryColor } from "../lib/colors";
 import { currentMonth, monthLong, rupiah } from "../lib/format";
-import { useBudgets, useGoals, useQuickAdd, useSummary, useTransactions } from "../lib/queries";
+import { useBudgets, useGoals, useNetWorth, useQuickAdd, useSummary, useTransactions } from "../lib/queries";
 import { useAuth } from "../lib/auth";
 import type { Transaction } from "../lib/types";
 
@@ -18,6 +18,7 @@ export function Dashboard() {
   const recent = useTransactions({ month, limit: 8 });
   const budgets = useBudgets();
   const goals = useGoals();
+  const netWorth = useNetWorth();
   const quick = useQuickAdd();
   const navigate = useNavigate();
   const { logout } = useAuth();
@@ -65,6 +66,26 @@ export function Dashboard() {
 
       <div className="cols">
         <div className="col">
+          {netWorth.data && (
+            <div className="card">
+              <div className="section-title">Total saldo</div>
+              <div className="safe">
+                <span className="big tabular">{rupiah(netWorth.data.total)}</span>
+                <span className="hint">di {netWorth.data.accounts.length} akun</span>
+              </div>
+              {netWorth.data.accounts.length > 0 && (
+                <div className="legend" style={{ marginTop: 10 }}>
+                  {netWorth.data.accounts.map((a) => (
+                    <div className="li" key={a.id}>
+                      <span className="nm">{a.name}</span>
+                      <span className="vl tabular">{rupiah(a.balance)}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
           {budgets.data?.total_budget != null && (() => {
             const spent = Number(budgets.data.total_spent);
             const total = Number(budgets.data.total_budget);

@@ -24,3 +24,10 @@ class AccountOut(AccountBase):
     id: int
 
     model_config = {"from_attributes": True}
+
+
+class NetWorthOut(BaseModel):
+    """Total kekayaan = jumlah saldo semua akun (+ rincian per akun)."""
+
+    total: Decimal
+    accounts: list[AccountOut]

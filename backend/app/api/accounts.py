@@ -1,3 +1,5 @@
+from decimal import Decimal
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -5,7 +7,7 @@ from sqlalchemy.orm import Session
 from app.api.deps import get_current_user
 from app.core.database import get_db
 from app.models import Account
-from app.schemas.account import AccountCreate, AccountOut, AccountUpdate
+from app.schemas.account import AccountCreate, AccountOut, AccountUpdate, NetWorthOut
 
 router = APIRouter(
     prefix="/accounts", tags=["accounts"], dependencies=[Depends(get_current_user)]
@@ -15,6 +17,18 @@ router = APIRouter(
 @router.get("", response_model=list[AccountOut])
 def list_accounts(db: Session = Depends(get_db)) -> list[Account]:
     return list(db.scalars(select(Account).order_by(Account.name)).all())
+
+
+@router.get("/net-worth", response_model=NetWorthOut)
+def net_worth(db: Session = Depends(get_db)) -> NetWorthOut:
+    """Total kekayaan bersih = jumlah saldo semua akun.
+
+    Transfer & tabungan-goal adalah perpindahan antar akun (net nol), jadi jumlah
+    ini mencerminkan uang riil yang dimiliki.
+    """
+    accounts = list(db.scalars(select(Account).order_by(Account.name)).all())
+    total = sum((a.balance for a in accounts), Decimal(0))
+    return NetWorthOut(total=total, accounts=accounts)
 
 
 @router.post("", response_model=AccountOut, status_code=status.HTTP_201_CREATED)

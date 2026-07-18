@@ -17,6 +17,11 @@ export interface Account {
   balance: string;
 }
 
+export interface NetWorth {
+  total: string;
+  accounts: Account[];
+}
+
 export interface Transaction {
   id: number;
   amount: string;

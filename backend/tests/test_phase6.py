@@ -52,6 +52,32 @@ def test_transfer_same_account_rejected(auth_client):
     assert resp.status_code == 422
 
 
+# ---------- Net worth ----------
+
+def test_net_worth_sums_accounts_and_ignores_transfers(auth_client):
+    auth_client.post("/accounts", json={"name": "Bank", "type": "bank", "balance": 500000})
+    auth_client.post("/accounts", json={"name": "GoPay", "type": "ewallet", "balance": 150000})
+
+    nw = auth_client.get("/accounts/net-worth").json()
+    assert float(nw["total"]) == 650000  # Cash 0 + Bank 500k + GoPay 150k
+    assert {a["name"] for a in nw["accounts"]} >= {"Cash", "Bank", "GoPay"}
+
+    accs = _accounts_by_name(auth_client)
+    # transfer antar akun → net worth tetap
+    auth_client.post(
+        "/transactions/transfer",
+        json={"amount": 100000, "account_id": accs["Bank"]["id"], "dest_account_id": accs["GoPay"]["id"]},
+    )
+    assert float(auth_client.get("/accounts/net-worth").json()["total"]) == 650000
+
+    # pengeluaran → net worth turun
+    auth_client.post(
+        "/transactions",
+        json={"amount": 50000, "type": "expense", "account_id": accs["Cash"]["id"]},
+    )
+    assert float(auth_client.get("/accounts/net-worth").json()["total"]) == 600000
+
+
 # ---------- Rollover budget ----------
 
 def _spend_at(db, name, amount, occ):

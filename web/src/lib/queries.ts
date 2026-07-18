@@ -4,6 +4,7 @@ import type {
   Account,
   BudgetOverview,
   Category,
+  NetWorth,
   OCRResult,
   Recurring,
   SavingGoal,
@@ -24,6 +25,13 @@ export function useAccounts() {
   return useQuery({
     queryKey: ["accounts"],
     queryFn: () => api.get<Account[]>("/accounts"),
+  });
+}
+
+export function useNetWorth() {
+  return useQuery({
+    queryKey: ["networth"],
+    queryFn: () => api.get<NetWorth>("/accounts/net-worth"),
   });
 }
 
@@ -69,6 +77,7 @@ function useInvalidateData() {
     qc.invalidateQueries({ queryKey: ["summary"] });
     qc.invalidateQueries({ queryKey: ["trend"] });
     qc.invalidateQueries({ queryKey: ["accounts"] });
+    qc.invalidateQueries({ queryKey: ["networth"] });
     qc.invalidateQueries({ queryKey: ["budgets"] });
   };
 }
@@ -226,7 +235,10 @@ export function useSaveAccount() {
       id
         ? api.patch<Account>(`/accounts/${id}`, body)
         : api.post<Account>("/accounts", body),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["accounts"] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["accounts"] });
+      qc.invalidateQueries({ queryKey: ["networth"] });
+    },
   });
 }
 
@@ -234,6 +246,9 @@ export function useDeleteAccount() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (id: number) => api.del(`/accounts/${id}`),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["accounts"] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["accounts"] });
+      qc.invalidateQueries({ queryKey: ["networth"] });
+    },
   });
 }
