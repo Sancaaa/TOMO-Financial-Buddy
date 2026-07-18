@@ -121,13 +121,14 @@ def overview(db: Session, period: str | None = None) -> BudgetOverview:
     days_left = max(days_in_month - day_today + 1, 0) if is_current else 0
 
     spent_by_cat = _spent_by_category(db, period)
-    total_spent = sum(spent_by_cat.values(), Decimal(0))
+    all_spent = sum(spent_by_cat.values(), Decimal(0))
 
     prev_period = _prev_period(period)
     _prev_spent: dict[int | None, Decimal] | None = None
 
     categories: list[CategoryBudget] = []
     sum_cat_budget = Decimal(0)
+    sum_budgeted_spent = Decimal(0)  # belanja di kategori yang punya budget saja
     expense_cats = db.scalars(
         select(Category).where(Category.type == "expense").order_by(Category.name)
     ).all()
@@ -147,6 +148,7 @@ def overview(db: Session, period: str | None = None) -> BudgetOverview:
             continue
         if budget:
             sum_cat_budget += budget
+            sum_budgeted_spent += spent
         b = budget or Decimal(0)
         pct = int((spent / b * 100).to_integral_value()) if b > 0 else 0
         categories.append(
@@ -161,10 +163,21 @@ def overview(db: Session, period: str | None = None) -> BudgetOverview:
             )
         )
 
+    # Cakupan total_spent harus sama dengan total_budget agar sisa & safe-to-spend
+    # koheren:
+    #   - total eksplisit → payung untuk semua belanja → total_spent = all_spent
+    #   - total diturunkan (jumlah budget kategori) → hanya belanja di kategori
+    #     berbudget yang dihitung (belanja tak-berbudget tidak menggerus envelope)
     explicit_total = effective_budget(db, None, period)
-    total_budget = explicit_total if explicit_total is not None else (
-        sum_cat_budget if sum_cat_budget > 0 else None
-    )
+    if explicit_total is not None:
+        total_budget = explicit_total
+        total_spent = all_spent
+    elif sum_cat_budget > 0:
+        total_budget = sum_cat_budget
+        total_spent = sum_budgeted_spent
+    else:
+        total_budget = None
+        total_spent = all_spent
 
     total_remaining = (total_budget - total_spent) if total_budget is not None else None
     safe_to_spend = None

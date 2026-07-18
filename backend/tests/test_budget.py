@@ -53,6 +53,38 @@ def test_budget_default_derived_from_categories(auth_client):
     assert ov["total_budget_explicit"] is False
 
 
+def _cat_id(auth_client, name):
+    return next(c for c in auth_client.get("/categories").json() if c["name"] == name)["id"]
+
+
+def test_derived_total_counts_only_budgeted_spending(auth_client):
+    # total diturunkan dari budget Makan; belanja di kategori tak-berbudget (Hiburan)
+    # TIDAK boleh menggerus envelope total.
+    makan, hiburan = _cat_id(auth_client, "Makan"), _cat_id(auth_client, "Hiburan")
+    auth_client.put("/budgets", json={"category_id": makan, "amount": 500000})
+    auth_client.post("/transactions", json={"amount": 200000, "type": "expense", "category_id": makan})
+    auth_client.post("/transactions", json={"amount": 300000, "type": "expense", "category_id": hiburan})
+
+    ov = auth_client.get("/budgets").json()
+    assert ov["total_budget_explicit"] is False
+    assert float(ov["total_budget"]) == 500000
+    assert float(ov["total_spent"]) == 200000   # hanya Makan, bukan Hiburan
+    assert float(ov["total_remaining"]) == 300000
+
+
+def test_explicit_total_counts_all_spending(auth_client):
+    # total eksplisit = payung → semua belanja dihitung (termasuk tak-berbudget)
+    makan, hiburan = _cat_id(auth_client, "Makan"), _cat_id(auth_client, "Hiburan")
+    auth_client.put("/budgets", json={"category_id": None, "amount": 1000000})
+    auth_client.post("/transactions", json={"amount": 200000, "type": "expense", "category_id": makan})
+    auth_client.post("/transactions", json={"amount": 300000, "type": "expense", "category_id": hiburan})
+
+    ov = auth_client.get("/budgets").json()
+    assert ov["total_budget_explicit"] is True
+    assert float(ov["total_spent"]) == 500000
+    assert float(ov["total_remaining"]) == 500000
+
+
 def _spend_today(db, category_name, amount):
     cat = db.scalar(select(Category).where(Category.name == category_name))
     db.add(Transaction(amount=Decimal(amount), type="expense", category_id=cat.id, occurred_at=now_local()))
