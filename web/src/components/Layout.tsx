@@ -1,13 +1,14 @@
 import { NavLink, Outlet } from "react-router-dom";
 import { Tomato } from "./Tomato";
+import { Icon, type IconName } from "./Icon";
 import { useAuth } from "../lib/auth";
 
-const TABS = [
-  { to: "/", label: "Beranda", icon: "🏠", end: true },
-  { to: "/riwayat", label: "Riwayat", icon: "📋", end: false },
-  { to: "/tambah", label: "Tambah", icon: "＋", add: true, end: false },
-  { to: "/analitik", label: "Analitik", icon: "📊", end: false },
-  { to: "/kelola", label: "Kelola", icon: "⚙️", end: false },
+const TABS: { to: string; label: string; icon: IconName; end: boolean; add?: boolean }[] = [
+  { to: "/", label: "Beranda", icon: "home", end: true },
+  { to: "/riwayat", label: "Riwayat", icon: "list", end: false },
+  { to: "/tambah", label: "Tambah", icon: "plus", add: true, end: false },
+  { to: "/analitik", label: "Analitik", icon: "chart", end: false },
+  { to: "/kelola", label: "Kelola", icon: "settings", end: false },
 ];
 
 export function Layout() {
@@ -30,7 +31,7 @@ export function Layout() {
                 end={t.end}
                 className={({ isActive }) => "sidelink" + (isActive ? " active" : "")}
               >
-                <span className="ic">{t.icon}</span>
+                <span className="ic"><Icon name={t.icon} size={20} /></span>
                 <span>{t.label}</span>
               </NavLink>
             ))}
@@ -60,10 +61,10 @@ export function Layout() {
             }
           >
             {t.add ? (
-              <span className="badge">{t.icon}</span>
+              <span className="badge"><Icon name={t.icon} size={26} stroke={2.2} /></span>
             ) : (
               <>
-                <span className="ic">{t.icon}</span>
+                <span className="ic"><Icon name={t.icon} size={22} /></span>
                 <span>{t.label}</span>
               </>
             )}

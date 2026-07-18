@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { Icon } from "./Icon";
 
 export function Sheet({
   title,
@@ -14,8 +15,8 @@ export function Sheet({
       <div className="sheet" onClick={(e) => e.stopPropagation()}>
         <div className="between">
           <h3>{title}</h3>
-          <button className="btn btn-sm" onClick={onClose} aria-label="Tutup">
-            ✕
+          <button className="icon-btn" onClick={onClose} aria-label="Tutup">
+            <Icon name="close" size={18} />
           </button>
         </div>
         {children}

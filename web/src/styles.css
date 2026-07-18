@@ -1,24 +1,33 @@
 :root {
-  --cream: #f2ece3;
-  --cream-2: #e8dfd2;
-  --paper: #fbf6ee;
-  --sand: #d9cfbf;
-  --border: #e3dacb;
-  --ink: #1c1007;
-  --ink-soft: #4a3728;
-  --ink-muted: #7a6a58;
-  --tomato: #c0392b;
-  --tomato-bright: #e74c3c;
-  --tomato-pale: #f9d0cc;
-  --leaf: #4caf50;
-  --leaf-dark: #2e7d32;
-  --leaf-tint: #e4efdd;
-  --warning: #d9992e;
-  --danger: #c0392b;
-  --radius-card: 14px;
-  --radius-control: 10px;
-  --shadow-card: 3px 4px 18px rgba(28, 16, 7, 0.08);
-  --shadow-lift: 4px 8px 26px rgba(28, 16, 7, 0.13);
+  /* Netral hangat — sedikit lebih kaya & kontras biar kartu "pop" */
+  --cream: #f4ead9;
+  --cream-2: #ecdfca;
+  --paper: #fffaf1;
+  --sand: #dcccb2;
+  --border: #e7dbc4;
+  --ink: #201105;
+  --ink-soft: #4a3626;
+  --ink-muted: #86735c;
+  /* Tomat — dikuatkan: lebih jenuh & berani, plus varian deep untuk pressed/teks */
+  --tomato: #de3b26;
+  --tomato-bright: #ff5638;
+  --tomato-deep: #ab2415;
+  --tomato-pale: #fbd4cb;
+  --tomato-tint: #fce9e3;
+  /* Daun — pemasukan / status positif, sedikit lebih hidup */
+  --leaf: #3fa74c;
+  --leaf-dark: #237a2c;
+  --leaf-tint: #e2efd7;
+  /* Aksen "fun" — kuning kunyit hangat */
+  --gold: #e6a52c;
+  --gold-tint: #f8eccf;
+  --warning: #e0982a;
+  --danger: #c8341f;
+  --radius-card: 15px;
+  --radius-control: 11px;
+  --shadow-card: 3px 5px 20px rgba(41, 18, 8, 0.09);
+  --shadow-lift: 5px 12px 34px rgba(41, 18, 8, 0.16);
+  --shadow-tomato: 0 8px 20px -6px rgba(199, 46, 27, 0.5);
   --ff-display: "Playfair Display", Georgia, "Times New Roman", serif;
   --ff-sans: "DM Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   --nav-h: 66px;
@@ -33,6 +42,19 @@ body {
   font-size: 15px;
   line-height: 1.55;
   -webkit-font-smoothing: antialiased;
+}
+
+/* wash warna hangat, viewport-anchored & GPU-friendly (bukan background-attachment:fixed
+   yang berat di mobile) */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(120% 80% at 100% 0%, var(--tomato-tint) 0%, transparent 42%),
+    radial-gradient(120% 90% at 0% 100%, var(--gold-tint) 0%, transparent 45%);
 }
 
 h1, h2, h3 { font-family: var(--ff-display); color: var(--ink); line-height: 1.1; font-weight: 700; }
@@ -101,9 +123,10 @@ a { color: var(--tomato); text-decoration: none; }
   font-weight: 500;
   font-size: 15px;
 }
-.sidelink .ic { font-size: 17px; width: 20px; text-align: center; }
+.sidelink .ic { display: inline-flex; width: 22px; justify-content: center; color: var(--ink-muted); }
 .sidelink:hover { background: var(--cream); }
-.sidelink.active { background: var(--tomato-pale); color: var(--tomato); }
+.sidelink.active { background: var(--tomato-pale); color: var(--tomato-deep); font-weight: 600; }
+.sidelink.active .ic { color: var(--tomato); }
 .side-footer { margin-top: auto; display: flex; flex-direction: column; gap: 10px; align-items: flex-start; padding-top: 20px; }
 .side-footer .deco-t { opacity: 0.35; }
 .side-footer .logout { background: none; border: none; color: var(--ink-muted); font-size: 13px; padding: 0; }
@@ -155,14 +178,17 @@ a { color: var(--tomato); text-decoration: none; }
   display: flex; flex-direction: column; align-items: center; gap: 3px;
   font-size: 11px; color: var(--ink-muted); padding: 6px 10px; min-width: 54px;
 }
-.navitem.active { color: var(--tomato); }
-.navitem .ic { font-size: 19px; line-height: 1; }
+.navitem.active { color: var(--tomato-deep); }
+.navitem .ic { display: inline-flex; line-height: 1; }
 .navitem.add .badge {
-  width: 46px; height: 46px; border-radius: 50%;
-  background: var(--tomato); color: var(--cream);
+  width: 50px; height: 50px; border-radius: 50%;
+  background: linear-gradient(160deg, var(--tomato-bright), var(--tomato));
+  color: #fff5f0;
   display: flex; align-items: center; justify-content: center;
-  font-size: 26px; margin-top: -20px; box-shadow: var(--shadow-card);
+  margin-top: -22px; box-shadow: var(--shadow-tomato);
+  border: 3px solid var(--paper);
 }
+.navitem.add .badge:active { transform: scale(0.94); }
 
 /* --- cards --- */
 .card {
@@ -176,6 +202,26 @@ a { color: var(--tomato); text-decoration: none; }
 .card.pad-sm { padding: 14px 16px; }
 .card.tilt { border: 1.5px solid var(--sand); transform: rotate(-1.4deg); }
 .card.tilt:focus-within { transform: rotate(0); transition: transform 0.2s; }
+/* garis tomat tipis di tepi atas kartu — aksen hangat, hemat */
+.card.accent::before {
+  content: ""; position: absolute; inset: 0 0 auto 0; height: 4px;
+  border-radius: var(--radius-card) var(--radius-card) 0 0;
+  background: linear-gradient(90deg, var(--tomato), var(--gold));
+}
+@media (min-width: 1024px) {
+  .card { transition: transform 0.16s ease, box-shadow 0.16s ease; }
+  .tx, .metric { transition: transform 0.16s ease; }
+}
+/* tombol ikon bulat (mis. tutup sheet) */
+.icon-btn {
+  width: 34px; height: 34px; border-radius: 50%; flex: none;
+  display: inline-flex; align-items: center; justify-content: center;
+  border: 1px solid var(--sand); background: var(--paper); color: var(--ink-soft);
+}
+.icon-btn:hover { background: var(--cream); color: var(--tomato); }
+/* selaraskan ikon inline dengan teks */
+.ico-txt { display: inline-flex; align-items: center; gap: 7px; }
+.pill .ic, .pill svg { vertical-align: -2px; }
 .muted { color: var(--ink-soft); }
 .hint { color: var(--ink-muted); font-size: 13px; }
 .eyebrow-sm { font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-muted); }
@@ -205,8 +251,16 @@ a { color: var(--tomato); text-decoration: none; }
 }
 .btn:active { transform: scale(0.98); }
 .btn:hover { background: var(--cream); }
-.btn-primary { background: var(--tomato); color: var(--cream); border: none; }
-.btn-primary:hover { background: var(--tomato-bright); }
+.btn-primary {
+  background: linear-gradient(160deg, var(--tomato-bright), var(--tomato));
+  color: #fff5f0;
+  border: none;
+  box-shadow: var(--shadow-tomato);
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+.btn-primary:hover { background: linear-gradient(160deg, var(--tomato-bright), var(--tomato-bright)); }
+.btn-primary:active { box-shadow: 0 3px 10px -4px rgba(199, 46, 27, 0.6); }
 .btn-block { width: 100%; }
 .btn-sm { padding: 7px 12px; font-size: 13px; }
 .btn-danger { color: var(--danger); border-color: var(--danger); background: transparent; }
@@ -242,8 +296,17 @@ a { color: var(--tomato); text-decoration: none; }
   text-align: left;
 }
 .tx:last-child { border-bottom: none; }
-.tx:hover { background: var(--cream); border-radius: 8px; }
+.tx:hover { background: var(--cream); border-radius: 10px; }
 .tx .dot { width: 10px; height: 10px; border-radius: 50%; flex: none; }
+/* badge kategori bulat dengan ikon berwarna */
+.cat-badge {
+  width: 38px; height: 38px; border-radius: 12px; flex: none;
+  display: flex; align-items: center; justify-content: center;
+  background: color-mix(in srgb, var(--c) 15%, var(--paper));
+  color: var(--c);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--c) 22%, transparent);
+}
+.tx .amt.exp { color: var(--ink); }
 .tx .body { flex: 1; min-width: 0; }
 .tx .desc { color: var(--ink); font-size: 15px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .tx .meta { color: var(--ink-muted); font-size: 12px; }

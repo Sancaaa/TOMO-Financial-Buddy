@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Bars, Donut } from "../components/Charts";
 import { PageHead } from "../components/PageHead";
+import { Icon } from "../components/Icon";
 import { BudgetBar } from "../components/BudgetBar";
 import { categoryColor } from "../lib/colors";
 import { currentMonth, monthLong, monthShort, rupiah } from "../lib/format";
@@ -72,8 +73,8 @@ export function Analytics() {
 
           {comparison && (
             <div className="card pad-sm">
-              <span style={{ color: comparison.up ? "var(--danger)" : "var(--leaf-dark)" }}>
-                {comparison.up ? "↑" : "↓"} {comparison.text}
+              <span className="ico-txt" style={{ color: comparison.up ? "var(--danger)" : "var(--leaf-dark)" }}>
+                <Icon name={comparison.up ? "arrow-up" : "arrow-down"} size={16} /> {comparison.text}
               </span>
             </div>
           )}

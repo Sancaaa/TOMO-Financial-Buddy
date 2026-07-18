@@ -1,5 +1,6 @@
 import { useRef, useState } from "react";
 import { PageHead } from "../components/PageHead";
+import { Icon } from "../components/Icon";
 import { rupiah, todayInput } from "../lib/format";
 import {
   useAccounts,
@@ -23,11 +24,17 @@ export function Add() {
       <div className="seg">
         <button className={mode === "quick" ? "active" : ""} onClick={() => setMode("quick")}>Cepat</button>
         <button className={mode === "form" ? "active" : ""} onClick={() => setMode("form")}>Form</button>
-        <button className={mode === "ocr" ? "active" : ""} onClick={() => setMode("ocr")}>Struk 📸</button>
+        <button className={mode === "ocr" ? "active" : ""} onClick={() => setMode("ocr")}>
+          <span className="ico-txt" style={{ justifyContent: "center" }}><Icon name="camera" size={15} /> Struk</span>
+        </button>
         <button className={mode === "transfer" ? "active" : ""} onClick={() => setMode("transfer")}>Transfer</button>
       </div>
 
-      {flash && <div className="card pad-sm" style={{ color: "var(--leaf-dark)" }}>✅ {flash}</div>}
+      {flash && (
+        <div className="card pad-sm ico-txt" style={{ color: "var(--leaf-dark)" }}>
+          <Icon name="check" size={18} /> {flash}
+        </div>
+      )}
 
       {mode === "quick" && <QuickMode onDone={setFlash} />}
       {mode === "form" && <FormMode onDone={setFlash} />}
@@ -199,7 +206,9 @@ function OcrMode({ onDone }: { onDone: (s: string) => void }) {
     <div className="card stack">
       <input ref={fileRef} type="file" accept="image/*" capture="environment" onChange={onFile} hidden />
       <button className="btn btn-primary btn-block" onClick={() => fileRef.current?.click()} disabled={ocr.isPending}>
-        {ocr.isPending ? "Membaca struk…" : "📸 Pilih / foto struk"}
+        {ocr.isPending ? "Membaca struk…" : (
+          <span className="ico-txt" style={{ justifyContent: "center" }}><Icon name="camera" size={18} /> Pilih / foto struk</span>
+        )}
       </button>
       {ocr.isPending && <div className="center"><span className="spinner" /><span className="hint">Tomo lagi baca strukmu…</span></div>}
       {err && <div className="err">{err}</div>}

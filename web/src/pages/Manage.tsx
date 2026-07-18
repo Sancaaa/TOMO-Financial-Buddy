@@ -3,6 +3,7 @@ import { Sheet } from "../components/Sheet";
 import { PageHead } from "../components/PageHead";
 import { BudgetBar } from "../components/BudgetBar";
 import { Tomato } from "../components/Tomato";
+import { Icon, categoryIcon } from "../components/Icon";
 import { categoryColor } from "../lib/colors";
 import { rupiah } from "../lib/format";
 import {
@@ -38,7 +39,7 @@ export function Manage() {
     const r = await reconcile.mutateAsync();
     setReconMsg(
       r.corrected === 0
-        ? "Saldo semua akun sudah cocok ✓"
+        ? "Saldo semua akun sudah cocok."
         : `${r.corrected} akun disesuaikan dengan riwayat transaksi.`,
     );
   }
@@ -57,7 +58,9 @@ export function Manage() {
         <div className="txlist">
           {(categories ?? []).map((c) => (
             <button key={c.id} className="tx" onClick={() => setEditCat(c)}>
-              <span className="dot" style={{ background: categoryColor(c.name) }} />
+              <span className="cat-badge" style={{ "--c": c.type === "income" ? "var(--leaf-dark)" : categoryColor(c.name) } as React.CSSProperties}>
+                <Icon name={categoryIcon(c.icon, c.name)} size={19} />
+              </span>
               <span className="body">
                 <span className="desc">{c.name}</span>
                 <span className="meta">{c.type === "income" ? "Pemasukan" : "Pengeluaran"}{c.monthly_budget ? ` · budget ${rupiah(c.monthly_budget)}` : ""}</span>
@@ -346,7 +349,7 @@ function GoalsCard() {
   return (
     <div className="card">
       <div className="between" style={{ marginBottom: 8 }}>
-        <div className="section-title" style={{ margin: 0 }}>Target nabung 🎯</div>
+        <div className="section-title ico-txt" style={{ margin: 0 }}><Icon name="target" size={15} /> Target nabung</div>
         <button className="btn btn-sm" onClick={() => setEditGoal({})}>+ Tambah</button>
       </div>
       {(data ?? []).length === 0 && <p className="hint">Belum ada target. Mis. laptop, liburan.</p>}
@@ -362,7 +365,7 @@ function GoalsCard() {
             />
             <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
               {g.achieved && <Tomato size={22} face />}
-              {g.achieved && <span className="pill">tercapai 🎉</span>}
+              {g.achieved && <span className="pill ico-txt"><Icon name="trophy" size={13} /> tercapai</span>}
               {g.target_date && <span className="hint">target {g.target_date}</span>}
               <div style={{ flex: 1 }} />
               <button className="btn btn-sm" onClick={() => setContribute(g)}>Nabung</button>

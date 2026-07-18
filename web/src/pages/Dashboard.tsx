@@ -5,6 +5,7 @@ import { TxList } from "../components/TxList";
 import { TxEditSheet } from "../components/TxEditSheet";
 import { PageHead } from "../components/PageHead";
 import { Tomato } from "../components/Tomato";
+import { Icon } from "../components/Icon";
 import { BudgetBar } from "../components/BudgetBar";
 import { categoryColor } from "../lib/colors";
 import { currentMonth, monthLong, rupiah } from "../lib/format";
@@ -156,7 +157,7 @@ export function Dashboard() {
 
           {(goals.data ?? []).length > 0 && (
             <div className="card">
-              <div className="section-title">Target nabung 🎯</div>
+              <div className="section-title ico-txt"><Icon name="target" size={15} /> Target nabung</div>
               <div className="bbars">
                 {(goals.data ?? []).map((g) => (
                   <div key={g.id} className="stack" style={{ gap: 6 }}>
@@ -170,7 +171,7 @@ export function Dashboard() {
                     {g.achieved && (
                       <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
                         <Tomato size={20} face />
-                        <span className="pill">tercapai 🎉</span>
+                        <span className="pill ico-txt"><Icon name="trophy" size={13} /> tercapai</span>
                       </span>
                     )}
                   </div>
