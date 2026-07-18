@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TOMO Offline</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap');
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Nunito', sans-serif;
+            background: linear-gradient(135deg, #1A1A2E 0%, #16213E 50%, #0F3460 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            color: #FFFFFF;
+            padding: 20px;
+        }
+
+        /* Floating particles */
+        .particles {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            overflow: hidden;
+            z-index: 0;
+        }
+
+        .particle {
+            position: absolute;
+            border-radius: 50%;
+            opacity: 0.15;
+            animation: float-particle linear infinite;
+        }
+
+        @keyframes float-particle {
+            0% { transform: translateY(100vh) rotate(0deg); opacity: 0; }
+            10% { opacity: 0.15; }
+            90% { opacity: 0.15; }
+            100% { transform: translateY(-100px) rotate(720deg); opacity: 0; }
+        }
+        
+        .container {
+            text-align: center;
+            z-index: 1;
+            max-width: 420px;
+        }
+
+        /* Tomato Character */
+        .tomato-wrapper {
+            position: relative;
+            display: inline-block;
+            margin-bottom: 24px;
+            animation: bounce 3s ease-in-out infinite;
+        }
+
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-15px); }
+        }
+
+        .tomato {
+            width: 160px;
+            height: 160px;
+            position: relative;
+        }
+
+        .tomato-body {
+            width: 140px;
+            height: 130px;
+            background: radial-gradient(circle at 35% 35%, #FF7F6B, #FF6347 40%, #E5533D 80%);
+            border-radius: 50% 50% 50% 50% / 45% 45% 55% 55%;
+            position: absolute;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            box-shadow: 
+                inset -8px -8px 20px rgba(0,0,0,0.15),
+                0 15px 40px rgba(255, 99, 71, 0.3);
+        }
+
+        /* Tomato face */
+        .face {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            top: 0;
+            left: 0;
+        }
+
+        .eye {
+            width: 18px;
+            height: 22px;
+            background: #2D2D2D;
+            border-radius: 50%;
+            position: absolute;
+            top: 40%;
+            animation: blink 4s ease-in-out infinite;
+        }
+
+        .eye::after {
+            content: '';
+            width: 7px;
+            height: 7px;
+            background: white;
+            border-radius: 50%;
+            position: absolute;
+            top: 3px;
+            right: 3px;
+        }
+
+        .eye.left { left: 30%; }
+        .eye.right { right: 30%; }
+
+        @keyframes blink {
+            0%, 45%, 55%, 100% { transform: scaleY(1); }
+            50% { transform: scaleY(0.1); }
+        }
+
+        .mouth {
+            width: 35px;
+            height: 18px;
+            border: 3px solid #2D2D2D;
+            border-top: none;
+            border-radius: 0 0 50% 50%;
+            position: absolute;
+            bottom: 32%;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+
+        /* Sad mouth variant */
+        .mouth.sad {
+            border: 3px solid #2D2D2D;
+            border-bottom: none;
+            border-radius: 50% 50% 0 0;
+            bottom: 28%;
+            width: 30px;
+            height: 14px;
+        }
+
+        .cheek {
+            width: 22px;
+            height: 14px;
+            background: rgba(255, 180, 180, 0.5);
+            border-radius: 50%;
+            position: absolute;
+            top: 55%;
+        }
+
+        .cheek.left { left: 14%; }
+        .cheek.right { right: 14%; }
+
+        /* Tomato leaves/stem */
+        .stem {
+            position: absolute;
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 2;
+        }
+
+        .stem-line {
+            width: 4px;
+            height: 20px;
+            background: linear-gradient(to bottom, #66BB6A, #4CAF50);
+            margin: 0 auto;
+            border-radius: 2px;
+        }
+
+        .leaves {
+            display: flex;
+            gap: 0;
+            position: relative;
+            top: -2px;
+        }
+
+        .leaf {
+            width: 28px;
+            height: 14px;
+            border-radius: 50% 0;
+            position: relative;
+        }
+
+        .leaf:nth-child(1) {
+            background: #4CAF50;
+            transform: rotate(-30deg) translateX(5px);
+        }
+        .leaf:nth-child(2) {
+            background: #66BB6A;
+            transform: rotate(10deg) translateX(-2px) translateY(-3px);
+        }
+        .leaf:nth-child(3) {
+            background: #4CAF50;
+            transform: rotate(40deg) translateX(-10px);
+        }
+
+        /* Sweat drop */
+        .sweat {
+            position: absolute;
+            top: 35%;
+            right: 12%;
+            width: 8px;
+            height: 12px;
+            background: #87CEEB;
+            border-radius: 50% 50% 50% 50% / 30% 30% 70% 70%;
+            opacity: 0;
+            animation: sweat-drop 3s ease-in-out infinite 1.5s;
+        }
+
+        @keyframes sweat-drop {
+            0%, 100% { opacity: 0; transform: translateY(0); }
+            20% { opacity: 0.8; }
+            80% { opacity: 0.8; }
+            100% { opacity: 0; transform: translateY(30px); }
+        }
+
+        /* Shadow under tomato */
+        .shadow {
+            width: 100px;
+            height: 16px;
+            background: radial-gradient(ellipse, rgba(0,0,0,0.2), transparent);
+            border-radius: 50%;
+            margin: 10px auto 0;
+            animation: shadow-pulse 3s ease-in-out infinite;
+        }
+
+        @keyframes shadow-pulse {
+            0%, 100% { transform: scaleX(1); opacity: 0.3; }
+            50% { transform: scaleX(0.8); opacity: 0.15; }
+        }
+
+        /* Text styling */
+        h1 {
+            font-size: 28px;
+            font-weight: 800;
+            margin-bottom: 8px;
+            background: linear-gradient(135deg, #FF6347, #FF8C75);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .subtitle {
+            font-size: 16px;
+            color: rgba(255, 255, 255, 0.7);
+            margin-bottom: 12px;
+            line-height: 1.5;
+        }
+
+        .speech-bubble {
+            background: rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            border-radius: 20px;
+            padding: 20px 28px;
+            margin: 20px 0;
+            position: relative;
+            animation: fade-in-up 0.6s ease-out 0.3s both;
+        }
+
+        .speech-bubble::before {
+            content: '';
+            position: absolute;
+            top: -10px;
+            left: 50%;
+            transform: translateX(-50%);
+            border-left: 12px solid transparent;
+            border-right: 12px solid transparent;
+            border-bottom: 12px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .speech-text {
+            font-size: 15px;
+            color: rgba(255, 255, 255, 0.85);
+            line-height: 1.6;
+        }
+
+        .speech-text .emoji {
+            font-size: 20px;
+        }
+
+        @keyframes fade-in-up {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Retry button */
+        .retry-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            background: linear-gradient(135deg, #FF6347, #FF4500);
+            color: white;
+            border: none;
+            padding: 14px 36px;
+            border-radius: 50px;
+            font-size: 16px;
+            font-weight: 700;
+            font-family: 'Nunito', sans-serif;
+            cursor: pointer;
+            margin-top: 20px;
+            transition: all 0.3s ease;
+            box-shadow: 0 8px 25px rgba(255, 99, 71, 0.35);
+            animation: fade-in-up 0.6s ease-out 0.6s both;
+        }
+
+        .retry-btn:hover {
+            transform: translateY(-2px) scale(1.03);
+            box-shadow: 0 12px 35px rgba(255, 99, 71, 0.5);
+        }
+
+        .retry-btn:active {
+            transform: translateY(0) scale(0.98);
+        }
+
+        .retry-icon {
+            display: inline-block;
+            transition: transform 0.4s ease;
+        }
+
+        .retry-btn:hover .retry-icon {
+            transform: rotate(180deg);
+        }
+
+        /* Fun facts */
+        .fun-fact {
+            margin-top: 32px;
+            padding: 14px 20px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 14px;
+            border-left: 3px solid #FF6347;
+            animation: fade-in-up 0.6s ease-out 0.9s both;
+        }
+
+        .fun-fact-label {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: #FF6347;
+            font-weight: 700;
+            margin-bottom: 6px;
+        }
+
+        .fun-fact-text {
+            font-size: 13px;
+            color: rgba(255, 255, 255, 0.6);
+            line-height: 1.5;
+        }
+
+        /* Mini tomatoes decoration */
+        .mini-tomato {
+            position: fixed;
+            font-size: 24px;
+            opacity: 0.15;
+            animation: float-tomato linear infinite;
+            z-index: 0;
+        }
+
+        @keyframes float-tomato {
+            0% { transform: translateY(100vh) rotate(0deg); }
+            100% { transform: translateY(-100px) rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <!-- Floating particles -->
+    <div class="particles" id="particles"></div>
+
+    <!-- Mini floating tomatoes -->
+    <div id="mini-tomatoes"></div>
+
+    <div class="container">
+        <!-- Tomato Character -->
+        <div class="tomato-wrapper">
+            <div class="tomato">
+                <div class="stem">
+                    <div class="stem-line"></div>
+                    <div class="leaves">
+                        <div class="leaf"></div>
+                        <div class="leaf"></div>
+                        <div class="leaf"></div>
+                    </div>
+                </div>
+                <div class="tomato-body">
+                    <div class="face">
+                        <div class="eye left"></div>
+                        <div class="eye right"></div>
+                        <div class="cheek left"></div>
+                        <div class="cheek right"></div>
+                        <div class="mouth sad"></div>
+                    </div>
+                    <div class="sweat"></div>
+                </div>
+            </div>
+            <div class="shadow"></div>
+        </div>
+
+        <h1>Yah, Offline Nih... 🍅</h1>
+        <p class="subtitle">TOMO lagi gabisa nyambung ke server</p>
+
+        <div class="speech-bubble">
+            <p class="speech-text" id="speech-text">
+                <span class="emoji">😿</span> Hmm... kayaknya internet kamu lagi ngambek deh. 
+                Coba cek koneksi WiFi atau data kamu ya!
+            </p>
+        </div>
+
+        <button class="retry-btn" onclick="location.reload()">
+            <span class="retry-icon">🔄</span>
+            Coba Lagi
+        </button>
+
+        <div class="fun-fact" id="fun-fact">
+            <div class="fun-fact-label">🍅 Fakta Tomat</div>
+            <p class="fun-fact-text" id="fun-fact-text">
+                Tomat itu sebenarnya buah, bukan sayur lho! Secara botani, tomat termasuk keluarga berry.
+            </p>
+        </div>
+    </div>
+
+    <script>
+        // Fun facts about tomatoes
+        const funFacts = [
+            "Tomat itu sebenarnya buah, bukan sayur lho! Secara botani, tomat termasuk keluarga berry. 🤯",
+            "Ada lebih dari 10.000 varietas tomat di seluruh dunia! Dari yang kecil cherry sampai yang gede beefsteak. 🌍",
+            "Tomat awalnya dikira beracun oleh orang Eropa. Padahal enak banget! 😅",
+            "Tomat mengandung lycopene yang bikin warnanya merah dan bagus buat kesehatan jantung. ❤️",
+            "Festival La Tomatina di Spanyol pake lebih dari 150.000 tomat setiap tahunnya! 🎉",
+            "Tomat paling berat di dunia beratnya 3.51 kg — seberat bayi baru lahir! 👶",
+            "92% kandungan tomat itu air. Jadi tomat itu basically air yang punya rasa. 💧",
+            "China adalah produsen tomat terbesar di dunia, memproduksi sekitar 56 juta ton per tahun! 🇨🇳",
+            "Nama 'TOMO' terinspirasi dari 'tomato' — teman setia keuangan kamu! 🍅💰"
+        ];
+
+        const speeches = [
+            "<span class='emoji'>😿</span> Hmm... kayaknya internet kamu lagi ngambek deh. Coba cek koneksi WiFi atau data kamu ya!",
+            "<span class='emoji'>🔌</span> Server-nya lagi tidur siang kali ya... Sabar ya, nanti juga bangun kok!",
+            "<span class='emoji'>🌧️</span> Koneksi lagi kayak cuaca — ga bisa ditebak. Yuk coba lagi sebentar!",
+            "<span class='emoji'>🛸</span> TOMO lagi coba nyambung... tapi sinyal-nya kayak hilang ditelan alien!",
+            "<span class='emoji'>😴</span> Sepertinya ada yang lagi istirahat... entah server-nya atau internet-nya~"
+        ];
+
+        // Randomize content
+        function randomize() {
+            const factEl = document.getElementById('fun-fact-text');
+            const speechEl = document.getElementById('speech-text');
+            factEl.textContent = funFacts[Math.floor(Math.random() * funFacts.length)];
+            speechEl.innerHTML = speeches[Math.floor(Math.random() * speeches.length)];
+        }
+        randomize();
+
+        // Create floating particles
+        function createParticles() {
+            const container = document.getElementById('particles');
+            for (let i = 0; i < 20; i++) {
+                const particle = document.createElement('div');
+                particle.className = 'particle';
+                const size = Math.random() * 6 + 3;
+                particle.style.width = size + 'px';
+                particle.style.height = size + 'px';
+                particle.style.left = Math.random() * 100 + '%';
+                particle.style.background = Math.random() > 0.5 ? '#FF6347' : '#4CAF50';
+                particle.style.animationDuration = (Math.random() * 15 + 10) + 's';
+                particle.style.animationDelay = (Math.random() * 10) + 's';
+                container.appendChild(particle);
+            }
+        }
+        createParticles();
+
+        // Create mini floating tomatoes
+        function createMiniTomatoes() {
+            const container = document.getElementById('mini-tomatoes');
+            const emojis = ['🍅', '🌿', '💚'];
+            for (let i = 0; i < 8; i++) {
+                const tomato = document.createElement('div');
+                tomato.className = 'mini-tomato';
+                tomato.textContent = emojis[Math.floor(Math.random() * emojis.length)];
+                tomato.style.left = Math.random() * 100 + '%';
+                tomato.style.fontSize = (Math.random() * 16 + 16) + 'px';
+                tomato.style.animationDuration = (Math.random() * 20 + 15) + 's';
+                tomato.style.animationDelay = (Math.random() * 15) + 's';
+                container.appendChild(tomato);
+            }
+        }
+        createMiniTomatoes();
+    </script>
+</body>
+</html>
