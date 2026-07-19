@@ -102,25 +102,6 @@ function UserRow({ u, selfId }: { u: AdminUser; selfId?: number }) {
     }
   }
 
-  async function editTele() {
-    const newId = prompt(
-      `Telegram Chat ID untuk "${u.username}":\n(Kosongkan untuk menghapus tautan)`,
-      u.telegram_chat_id || ""
-    );
-    if (newId === null) return;
-    setBusy(true);
-    try {
-      if (newId.trim() === "") {
-        await update.mutateAsync({ id: u.id, body: { unlink_telegram: true } });
-      } else {
-        await update.mutateAsync({ id: u.id, body: { telegram_chat_id: newId.trim() } });
-      }
-    } catch (e) {
-      alert(e instanceof Error ? e.message : "Gagal memperbarui Telegram ID");
-    } finally {
-      setBusy(false);
-    }
-  }
 
   async function del() {
     if (!confirm(`Hapus user "${u.username}" beserta semua datanya? Tak bisa dibatalkan.`)) return;
@@ -150,7 +131,6 @@ function UserRow({ u, selfId }: { u: AdminUser; selfId?: number }) {
         </span>
       </span>
       <span style={{ display: "flex", gap: 6 }}>
-        <button className="btn btn-sm" onClick={editTele} disabled={busy}>Edit Tele</button>
         <button className="btn btn-sm" onClick={resetPassword} disabled={busy}>Reset PW</button>
         {u.id !== selfId && (
           <button className="btn btn-sm btn-danger" onClick={del} disabled={busy}>Hapus</button>

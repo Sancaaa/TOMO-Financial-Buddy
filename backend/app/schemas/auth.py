@@ -31,7 +31,6 @@ class AdminUserOut(BaseModel):
     username: str
     is_admin: bool
     telegram_linked: bool
-    telegram_chat_id: str | None = None
     tx_count: int
 
 
@@ -44,7 +43,6 @@ class UserCreate(BaseModel):
 class AdminUserUpdate(BaseModel):
     password: str | None = Field(default=None, min_length=8)
     is_admin: bool | None = None
-    telegram_chat_id: str | None = None
     unlink_telegram: bool = False
 
 

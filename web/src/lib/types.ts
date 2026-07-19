@@ -12,7 +12,6 @@ export interface AdminUser {
   username: string;
   is_admin: boolean;
   telegram_linked: boolean;
-  telegram_chat_id: string | null;
   tx_count: number;
 }
 
