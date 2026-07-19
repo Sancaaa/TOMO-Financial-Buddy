@@ -1,7 +1,6 @@
 from decimal import Decimal
 
-from pydantic import BaseModel
-
+from pydantic import BaseModel, Field
 
 class CategoryBudgetOut(BaseModel):
     category_id: int
@@ -39,4 +38,4 @@ class SafeToSpendOut(BaseModel):
 class BudgetSet(BaseModel):
     category_id: int | None = None  # None = budget total
     amount: Decimal | None  # None = hapus
-    period: str | None = None  # None = default berulang
+    period: str | None = Field(default=None, pattern=r"^\d{4}-\d{2}$")  # None = default berulang

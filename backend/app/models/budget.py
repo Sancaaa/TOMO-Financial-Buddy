@@ -30,7 +30,6 @@ class Budget(Base):
     )
     period: Mapped[str | None] = mapped_column(String(7), nullable=True)  # 'YYYY-MM' atau NULL
     amount: Mapped[Decimal] = mapped_column(Numeric(14, 2))
-    rollover: Mapped[bool] = mapped_column(Boolean, default=False)
 
 
 class BudgetAlert(Base):

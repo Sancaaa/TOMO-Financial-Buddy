@@ -113,3 +113,47 @@ def test_budget_alerts_dedup(db, uid):
     _spend_today(db, "Makan", 20000, uid)  # total 105k → jebol
     msgs2 = check_budget_alerts(db, uid)
     assert any("jebol" in m for m in msgs2)
+
+
+def test_budget_rollover(auth_client, db):
+    makan = _makan_id(auth_client)
+    # enable rollover for Makan
+    cat = db.get(Category, makan)
+    cat.budget_rollover = True
+    cat.monthly_budget = Decimal(500000)
+    db.commit()
+
+    # We need to simulate spending in the previous month.
+    # We will do this by directly adding a transaction in the past.
+    from app.core.clock import now_local
+    from datetime import timedelta
+    now = now_local()
+    prev_month = now.replace(day=1) - timedelta(days=1)
+    
+    db.add(Transaction(
+        user_id=cat.user_id, amount=Decimal(400000), type="expense",
+        category_id=makan, occurred_at=prev_month,
+    ))
+    db.commit()
+
+    # The rollover should add 100k (500k - 400k) to the current month's budget
+    ov = auth_client.get("/budgets").json()
+    cat_ov = next(c for c in ov["categories"] if c["category_id"] == makan)
+    
+    assert float(cat_ov["budget"]) == 600000
+
+
+def test_budget_period_override(auth_client, db):
+    makan = _makan_id(auth_client)
+    # default budget 500k
+    auth_client.put("/budgets", json={"category_id": makan, "amount": 500000})
+    
+    # override for current period 700k
+    from app.services.budget import current_period
+    period = current_period()
+    auth_client.put("/budgets", json={"category_id": makan, "amount": 700000, "period": period})
+    
+    ov = auth_client.get("/budgets").json()
+    cat_ov = next(c for c in ov["categories"] if c["category_id"] == makan)
+    
+    assert float(cat_ov["budget"]) == 700000
