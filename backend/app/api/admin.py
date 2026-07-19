@@ -29,6 +29,7 @@ def _to_out(db: Session, user: User) -> AdminUserOut:
         username=user.username,
         is_admin=user.is_admin,
         telegram_linked=user.telegram_chat_id is not None,
+        telegram_chat_id=user.telegram_chat_id,
         tx_count=tx_count,
     )
 
@@ -71,7 +72,9 @@ def update_user(
 
     if payload.password is not None:
         user.password_hash = hash_password(payload.password)
-    if payload.unlink_telegram:
+    if payload.telegram_chat_id is not None:
+        user.telegram_chat_id = payload.telegram_chat_id
+    elif payload.unlink_telegram:
         user.telegram_chat_id = None
     if payload.is_admin is not None:
         # jangan sampai admin terakhir kehilangan status admin
