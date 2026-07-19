@@ -62,14 +62,20 @@ function TelegramLinkCard() {
         </>
       ) : code ? (
         <>
-          <p className="hint">Kirim pesan ini ke bot TOMO di Telegram:</p>
-          <div
-            className="card pad-sm"
-            style={{ fontFamily: "monospace", fontSize: 18, textAlign: "center", userSelect: "all" }}
+          <p className="hint">Klik tautan di bawah ini untuk menghubungkan akun secara otomatis via Telegram:</p>
+          <a
+            href={`https://t.me/TOMOFinance_BOT?start=${code}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="btn btn-primary btn-sm"
+            style={{ textDecoration: "none", textAlign: "center", display: "block" }}
           >
-            /link {code}
-          </div>
-          <p className="hint">Kode berlaku 15 menit. Setelah terkirim, buka ulang halaman ini.</p>
+            Buka Telegram (@TOMOFinance_BOT)
+          </a>
+          <p className="hint" style={{ marginTop: 8 }}>
+            Atau kirim manual kode ini ke bot: <strong style={{ userSelect: "all" }}>/link {code}</strong>
+            <br/>(Kode berlaku 15 menit). Setelah terkirim, buka ulang halaman ini.
+          </p>
         </>
       ) : (
         <>

@@ -50,8 +50,8 @@ def handle_update(update: dict, db: Session, tg) -> None:
     chat_id = msg["chat"]["id"]
     text = (msg.get("text") or "").strip()
 
-    # /link <kode> harus bisa dipakai chat yang BELUM terikat.
-    if text.lower().startswith("/link"):
+    # /link <kode> atau /start <kode> (dari deep link) harus bisa dipakai chat yang BELUM terikat.
+    if text.lower().startswith("/link") or text.lower().startswith("/start "):
         _handle_link(text, chat_id, db, tg)
         return
 
