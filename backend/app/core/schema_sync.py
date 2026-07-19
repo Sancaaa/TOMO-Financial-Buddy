@@ -61,14 +61,20 @@ _NOT_NULL_STATEMENTS = [
 def ensure_schema(engine: Engine) -> None:
     if engine.dialect.name != "postgresql":
         return
+    # Fase 1: tambah kolom + backfill + index dalam satu transaksi (atomik).
     with engine.begin() as conn:
         for stmt in _STATEMENTS:
             conn.execute(text(stmt))
-        # SET NOT NULL bisa gagal bila ada user_id yatim (mis. data korup);
-        # jangan gagalkan seluruh startup — coba satu per satu.
-        for stmt in _NOT_NULL_STATEMENTS:
-            try:
-                with engine.begin() as conn2:
-                    conn2.execute(text(stmt))
-            except Exception:
-                pass
+
+    # Fase 2: kunci NOT NULL SETELAH fase 1 di-commit. WAJIB di luar transaksi
+    # fase 1: ALTER TABLE di fase 1 memegang ACCESS EXCLUSIVE lock sampai commit,
+    # jadi menjalankan ALTER lain pada tabel yang sama di koneksi/transaksi lain
+    # yang bersarang akan saling-kunci (hang) — Postgres tak mendeteksinya sebagai
+    # deadlock karena transaksi luar cuma "idle in transaction". Tiap statement
+    # dapat transaksinya sendiri; kalau gagal (mis. ada user_id yatim), lewati.
+    for stmt in _NOT_NULL_STATEMENTS:
+        try:
+            with engine.begin() as conn:
+                conn.execute(text(stmt))
+        except Exception:
+            pass
