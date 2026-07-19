@@ -9,13 +9,13 @@ from app.services.money import month_label, rupiah
 from app.services.summary import period_summary
 
 
-def build_daily_digest(db: Session, now: datetime) -> str:
+def build_daily_digest(db: Session, now: datetime, user_id: int) -> str:
     # Dikirim pagi hari (08:00 lokal) → rekap hari kemarin yang baru saja selesai.
     ref = now - timedelta(days=1)
     day_start = ref.replace(hour=0, minute=0, second=0, microsecond=0)
     day_end = day_start + timedelta(days=1) - timedelta(microseconds=1)
-    yesterday = period_summary(db, day_start, day_end)
-    ov = overview(db, current_period())
+    yesterday = period_summary(db, day_start, day_end, user_id)
+    ov = overview(db, user_id, current_period())
 
     lines = ["🍅 <b>Kabar Tomo kemarin</b>"]
     lines.append(f"Keluar kemarin: <b>{rupiah(yesterday.total_expense)}</b>")
@@ -31,8 +31,8 @@ def build_daily_digest(db: Session, now: datetime) -> str:
     return "\n".join(lines)
 
 
-def build_period_review(db: Session, period: str) -> str:
-    ov = overview(db, period)
+def build_period_review(db: Session, period: str, user_id: int) -> str:
+    ov = overview(db, user_id, period)
     lines = [f"📅 <b>Review {month_label(period)}</b>"]
     lines.append(f"Total pengeluaran: <b>{rupiah(ov.total_spent)}</b>")
     if ov.total_budget is not None:

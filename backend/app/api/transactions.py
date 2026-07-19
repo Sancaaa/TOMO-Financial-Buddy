@@ -9,7 +9,7 @@ from app.api.deps import get_current_user
 from app.core.clock import LOCAL_TZ, now_local
 from app.core.config import settings
 from app.core.database import get_db
-from app.models import Account, Transaction
+from app.models import Account, Category, Transaction, User
 from app.schemas.receipt import OCRDraft, OCRItem, OCRResult
 from app.schemas.transaction import (
     TransactionCreate,
@@ -51,6 +51,15 @@ def _month_range(month: str) -> tuple[datetime, datetime]:
     return start, end
 
 
+def _assert_owned(db: Session, model, obj_id: int | None, user_id: int, label: str) -> None:
+    """Pastikan account/category (bila di-set) milik user; cegah tempel data orang lain."""
+    if obj_id is None:
+        return
+    obj = db.get(model, obj_id)
+    if obj is None or obj.user_id != user_id:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, f"{label} tidak ditemukan")
+
+
 @router.get("", response_model=TransactionList)
 def list_transactions(
     month: str | None = None,
@@ -61,8 +70,9 @@ def list_transactions(
     limit: int = Query(50, ge=1, le=200),
     offset: int = Query(0, ge=0),
     db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
 ) -> TransactionList:
-    filters = []
+    filters = [Transaction.user_id == user.id]
     if month is not None:
         start, end = _month_range(month)
         filters.append(Transaction.occurred_at >= start)
@@ -90,12 +100,17 @@ def list_transactions(
 
 @router.post("", response_model=TransactionOut, status_code=status.HTTP_201_CREATED)
 def create_transaction(
-    payload: TransactionCreate, db: Session = Depends(get_db)
+    payload: TransactionCreate,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
 ) -> Transaction:
     data = payload.model_dump()
     if data.get("occurred_at") is None:
         data["occurred_at"] = now_local()
-    tx = Transaction(**data)
+    _assert_owned(db, Account, data.get("account_id"), user.id, "Akun")
+    _assert_owned(db, Account, data.get("dest_account_id"), user.id, "Akun tujuan")
+    _assert_owned(db, Category, data.get("category_id"), user.id, "Kategori")
+    tx = Transaction(user_id=user.id, **data)
     db.add(tx)
     db.flush()
     apply_balance(db, tx, sign=1)
@@ -105,7 +120,11 @@ def create_transaction(
 
 
 @router.post("/quick", response_model=TransactionOut, status_code=status.HTTP_201_CREATED)
-def quick_add(payload: TransactionQuick, db: Session = Depends(get_db)) -> Transaction:
+def quick_add(
+    payload: TransactionQuick,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+) -> Transaction:
     """Quick-add via teks bebas (mis. "makan 15k") — parser sama dengan bot."""
     parsed = parse_quick_input(payload.text, now_local())
     if parsed is None:
@@ -113,9 +132,12 @@ def quick_add(payload: TransactionQuick, db: Session = Depends(get_db)) -> Trans
             status.HTTP_422_UNPROCESSABLE_ENTITY,
             "Nominal tidak terbaca. Contoh: makan 15k / gojek 24rb",
         )
-    category = suggest_category(db, parsed.description, parsed.type)
-    account = db.scalars(select(Account).order_by(Account.id)).first()
+    category = suggest_category(db, parsed.description, parsed.type, user.id)
+    account = db.scalars(
+        select(Account).where(Account.user_id == user.id).order_by(Account.id)
+    ).first()
     tx = Transaction(
+        user_id=user.id,
         amount=parsed.amount,
         type=parsed.type,
         category_id=category.id if category else None,
@@ -134,13 +156,20 @@ def quick_add(payload: TransactionQuick, db: Session = Depends(get_db)) -> Trans
 
 
 @router.post("/transfer", response_model=TransactionOut, status_code=status.HTTP_201_CREATED)
-def create_transfer(payload: TransferCreate, db: Session = Depends(get_db)) -> Transaction:
+def create_transfer(
+    payload: TransferCreate,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+) -> Transaction:
     """Pindah saldo antar akun (bukan pengeluaran/pemasukan)."""
     if payload.account_id == payload.dest_account_id:
         raise HTTPException(
             status.HTTP_422_UNPROCESSABLE_ENTITY, "Akun asal dan tujuan harus beda"
         )
+    _assert_owned(db, Account, payload.account_id, user.id, "Akun asal")
+    _assert_owned(db, Account, payload.dest_account_id, user.id, "Akun tujuan")
     tx = Transaction(
+        user_id=user.id,
         amount=payload.amount,
         type="transfer",
         account_id=payload.account_id,
@@ -159,7 +188,9 @@ def create_transfer(payload: TransferCreate, db: Session = Depends(get_db)) -> T
 
 @router.post("/ocr", response_model=OCRResult)
 def ocr_transaction(
-    file: UploadFile = File(...), db: Session = Depends(get_db)
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
 ) -> OCRResult:
     """Unggah foto struk → simpan + OCR → kembalikan draft untuk dikonfirmasi.
 
@@ -173,12 +204,12 @@ def ocr_transaction(
             f"Gambar melebihi {settings.ocr_max_image_mb} MB",
         )
     media_type = file.content_type or "image/jpeg"
-    receipt, extraction = process_receipt(db, image_bytes, media_type)
+    receipt, extraction = process_receipt(db, image_bytes, user.id, media_type)
 
     if extraction is None:
         return OCRResult(receipt_id=receipt.id, ocr_status=receipt.ocr_status)
 
-    draft = build_draft(db, extraction)
+    draft = build_draft(db, extraction, user.id)
     return OCRResult(
         receipt_id=receipt.id,
         ocr_status=receipt.ocr_status,
@@ -196,25 +227,36 @@ def ocr_transaction(
     )
 
 
-@router.get("/{tx_id}", response_model=TransactionOut)
-def get_transaction(tx_id: int, db: Session = Depends(get_db)) -> Transaction:
+def _get_owned_tx(db: Session, tx_id: int, user_id: int) -> Transaction:
     tx = db.get(Transaction, tx_id)
-    if tx is None:
+    if tx is None or tx.user_id != user_id:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Transaksi tidak ditemukan")
     return tx
 
 
+@router.get("/{tx_id}", response_model=TransactionOut)
+def get_transaction(
+    tx_id: int, db: Session = Depends(get_db), user: User = Depends(get_current_user)
+) -> Transaction:
+    return _get_owned_tx(db, tx_id, user.id)
+
+
 @router.patch("/{tx_id}", response_model=TransactionOut)
 def update_transaction(
-    tx_id: int, payload: TransactionUpdate, db: Session = Depends(get_db)
+    tx_id: int,
+    payload: TransactionUpdate,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
 ) -> Transaction:
-    tx = db.get(Transaction, tx_id)
-    if tx is None:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Transaksi tidak ditemukan")
+    tx = _get_owned_tx(db, tx_id, user.id)
+
+    changes = payload.model_dump(exclude_unset=True)
+    _assert_owned(db, Account, changes.get("account_id"), user.id, "Akun")
+    _assert_owned(db, Category, changes.get("category_id"), user.id, "Kategori")
 
     # batalkan efek saldo lama, terapkan perubahan, lalu terapkan efek saldo baru
     apply_balance(db, tx, sign=-1)
-    for field, value in payload.model_dump(exclude_unset=True).items():
+    for field, value in changes.items():
         setattr(tx, field, value)
     apply_balance(db, tx, sign=1)
 
@@ -224,10 +266,10 @@ def update_transaction(
 
 
 @router.delete("/{tx_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_transaction(tx_id: int, db: Session = Depends(get_db)) -> None:
-    tx = db.get(Transaction, tx_id)
-    if tx is None:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Transaksi tidak ditemukan")
+def delete_transaction(
+    tx_id: int, db: Session = Depends(get_db), user: User = Depends(get_current_user)
+) -> None:
+    tx = _get_owned_tx(db, tx_id, user.id)
     apply_balance(db, tx, sign=-1)
     db.delete(tx)
     db.commit()

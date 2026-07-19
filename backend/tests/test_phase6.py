@@ -81,38 +81,41 @@ def test_net_worth_sums_accounts_and_ignores_transfers(auth_client):
 
 # ---------- Rollover budget ----------
 
-def _spend_at(db, name, amount, occ):
-    cat = db.scalar(select(Category).where(Category.name == name))
-    db.add(Transaction(amount=Decimal(amount), type="expense", category_id=cat.id, occurred_at=occ))
+def _spend_at(db, name, amount, occ, uid):
+    cat = db.scalar(select(Category).where(Category.user_id == uid, Category.name == name))
+    db.add(Transaction(
+        user_id=uid, amount=Decimal(amount), type="expense",
+        category_id=cat.id, occurred_at=occ,
+    ))
     db.commit()
 
 
-def test_rollover_adds_prev_leftover(db):
-    makan = db.scalar(select(Category).where(Category.name == "Makan"))
+def test_rollover_adds_prev_leftover(db, uid):
+    makan = db.scalar(select(Category).where(Category.user_id == uid, Category.name == "Makan"))
     makan.monthly_budget = Decimal(100000)
     makan.budget_rollover = True
     db.commit()
 
     prev = _prev_period(current_period())
     py, pm = (int(x) for x in prev.split("-"))
-    _spend_at(db, "Makan", 30000, datetime(py, pm, 15, 12, 0, tzinfo=LOCAL_TZ))  # sisa 70k
-    _spend_at(db, "Makan", 20000, now_local())
+    _spend_at(db, "Makan", 30000, datetime(py, pm, 15, 12, 0, tzinfo=LOCAL_TZ), uid)  # sisa 70k
+    _spend_at(db, "Makan", 20000, now_local(), uid)
 
-    cat = next(c for c in overview(db).categories if c.name == "Makan")
+    cat = next(c for c in overview(db, uid).categories if c.name == "Makan")
     assert cat.budget == Decimal(170000)  # 100k + 70k rollover
     assert cat.spent == Decimal(20000)
 
 
-def test_no_rollover_when_flag_off(db):
-    makan = db.scalar(select(Category).where(Category.name == "Makan"))
+def test_no_rollover_when_flag_off(db, uid):
+    makan = db.scalar(select(Category).where(Category.user_id == uid, Category.name == "Makan"))
     makan.monthly_budget = Decimal(100000)
     makan.budget_rollover = False
     db.commit()
     prev = _prev_period(current_period())
     py, pm = (int(x) for x in prev.split("-"))
-    _spend_at(db, "Makan", 30000, datetime(py, pm, 15, 12, 0, tzinfo=LOCAL_TZ))
+    _spend_at(db, "Makan", 30000, datetime(py, pm, 15, 12, 0, tzinfo=LOCAL_TZ), uid)
 
-    cat = next(c for c in overview(db).categories if c.name == "Makan")
+    cat = next(c for c in overview(db, uid).categories if c.name == "Makan")
     assert cat.budget == Decimal(100000)
 
 
@@ -176,13 +179,13 @@ def test_goal_contribution_moves_real_money(auth_client):
 
 # ---------- Rekonsiliasi saldo ----------
 
-def test_reconcile_fixes_drift(db):
-    acc = Account(name="Dompet", type="cash", balance=Decimal(0))
+def test_reconcile_fixes_drift(db, uid):
+    acc = Account(user_id=uid, name="Dompet", type="cash", balance=Decimal(0))
     db.add(acc)
     db.commit()
 
     # transaksi normal lewat apply_balance → saldo benar (50k)
-    tx = Transaction(amount=Decimal(50000), type="income", account_id=acc.id, occurred_at=now_local())
+    tx = Transaction(user_id=uid, amount=Decimal(50000), type="income", account_id=acc.id, occurred_at=now_local())
     db.add(tx)
     db.flush()
     apply_balance(db, tx, sign=1)
@@ -190,16 +193,16 @@ def test_reconcile_fixes_drift(db):
     assert acc.balance == Decimal(50000)
 
     # run pertama: tetapkan baseline, tak ada koreksi
-    assert reconcile_balances(db) == []
+    assert reconcile_balances(db, uid) == []
     assert acc.opening_balance == Decimal(0)
 
     # DRIFT: transaksi masuk TANPA apply_balance (mis. import/bug)
-    ghost = Transaction(amount=Decimal(20000), type="expense", account_id=acc.id, occurred_at=now_local())
+    ghost = Transaction(user_id=uid, amount=Decimal(20000), type="expense", account_id=acc.id, occurred_at=now_local())
     db.add(ghost)
     db.commit()
     assert acc.balance == Decimal(50000)  # saldo belum ikut turun → meleset
 
-    changes = reconcile_balances(db)
+    changes = reconcile_balances(db, uid)
     assert len(changes) == 1 and changes[0]["after"] == Decimal(30000)
     db.refresh(acc)
     assert acc.balance == Decimal(30000)  # 0 + 50k - 20k

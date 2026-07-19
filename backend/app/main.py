@@ -11,6 +11,7 @@ from starlette.staticfiles import StaticFiles
 
 from app.api import (
     accounts,
+    admin,
     analytics,
     auth,
     budgets,
@@ -125,6 +126,7 @@ app.include_router(recurring.router)
 app.include_router(goals.router)
 app.include_router(export.router)
 app.include_router(telegram.router)
+app.include_router(admin.router)
 
 
 @app.get("/health", tags=["meta"])

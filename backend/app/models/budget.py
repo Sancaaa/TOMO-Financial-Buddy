@@ -22,6 +22,9 @@ class Budget(Base):
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), index=True
+    )
     category_id: Mapped[int | None] = mapped_column(
         ForeignKey("categories.id", ondelete="CASCADE"), nullable=True
     )
@@ -36,6 +39,9 @@ class BudgetAlert(Base):
     __tablename__ = "budget_alerts"
 
     id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), index=True
+    )
     category_id: Mapped[int | None] = mapped_column(Integer, nullable=True)  # NULL = total
     period: Mapped[str] = mapped_column(String(7))
     threshold: Mapped[int] = mapped_column(Integer)  # 80 | 100

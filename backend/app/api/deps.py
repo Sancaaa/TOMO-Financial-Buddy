@@ -25,3 +25,13 @@ def get_current_user(
     if user is None:
         raise _credentials_error
     return user
+
+
+def get_admin_user(current_user: User = Depends(get_current_user)) -> User:
+    """Batasi endpoint ke admin (kelola user)."""
+    if not current_user.is_admin:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Hanya admin yang boleh mengakses ini",
+        )
+    return current_user

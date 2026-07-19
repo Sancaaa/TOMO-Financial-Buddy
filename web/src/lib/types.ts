@@ -1,5 +1,25 @@
 export type TxType = "expense" | "income" | "transfer";
 
+export interface CurrentUser {
+  id: number;
+  username: string;
+  is_admin: boolean;
+  telegram_chat_id: string | null;
+}
+
+export interface AdminUser {
+  id: number;
+  username: string;
+  is_admin: boolean;
+  telegram_linked: boolean;
+  tx_count: number;
+}
+
+export interface LinkCode {
+  code: string;
+  expires_at: string;
+}
+
 export interface Category {
   id: number;
   name: string;

@@ -1,4 +1,6 @@
+import secrets
 import time
+from datetime import timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
@@ -6,6 +8,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user
+from app.core.clock import now_local
 from app.core.database import get_db
 from app.core.security import (
     create_access_token,
@@ -13,7 +16,9 @@ from app.core.security import (
     verify_password,
 )
 from app.models import User
-from app.schemas.auth import PasswordChange, Token, UserOut
+from app.schemas.auth import LinkCodeOut, PasswordChange, Token, UserOut
+
+_LINK_CODE_TTL = timedelta(minutes=15)
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -73,3 +78,26 @@ def change_password(
 @router.get("/me", response_model=UserOut)
 def me(current_user: User = Depends(get_current_user)) -> User:
     return current_user
+
+
+@router.post("/telegram/link-code", response_model=LinkCodeOut)
+def create_link_code(
+    current_user: User = Depends(get_current_user), db: Session = Depends(get_db)
+) -> LinkCodeOut:
+    """Buat kode sekali-pakai; user kirim `/link <kode>` ke bot untuk menautkan chat."""
+    code = secrets.token_hex(3).upper()  # 6 karakter, mudah diketik
+    expires = now_local() + _LINK_CODE_TTL
+    s = dict(current_user.settings or {})
+    s["link_code"] = code
+    s["link_expires"] = expires.isoformat()
+    current_user.settings = s
+    db.commit()
+    return LinkCodeOut(code=code, expires_at=expires.isoformat())
+
+
+@router.post("/telegram/unlink", status_code=status.HTTP_204_NO_CONTENT)
+def unlink_telegram(
+    current_user: User = Depends(get_current_user), db: Session = Depends(get_db)
+) -> None:
+    current_user.telegram_chat_id = None
+    db.commit()

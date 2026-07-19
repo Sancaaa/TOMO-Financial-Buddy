@@ -2,8 +2,10 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "./api";
 import type {
   Account,
+  AdminUser,
   BudgetOverview,
   Category,
+  LinkCode,
   NetWorth,
   OCRResult,
   ReconcileResult,
@@ -207,6 +209,55 @@ export function useOcr() {
       form.append("file", file);
       return api.postForm<OCRResult>("/transactions/ocr", form);
     },
+  });
+}
+
+// --- Telegram link (self-service) ---
+export function useLinkCode() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => api.post<LinkCode>("/auth/telegram/link-code"),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["me"] }),
+  });
+}
+
+export function useUnlinkTelegram() {
+  return useMutation({
+    mutationFn: () => api.post<void>("/auth/telegram/unlink"),
+  });
+}
+
+// --- Admin: kelola user ---
+export function useAdminUsers() {
+  return useQuery({
+    queryKey: ["admin-users"],
+    queryFn: () => api.get<AdminUser[]>("/admin/users"),
+  });
+}
+
+export function useCreateUser() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: { username: string; password: string; is_admin?: boolean }) =>
+      api.post<AdminUser>("/admin/users", body),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["admin-users"] }),
+  });
+}
+
+export function useUpdateUser() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, body }: { id: number; body: Record<string, unknown> }) =>
+      api.patch<AdminUser>(`/admin/users/${id}`, body),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["admin-users"] }),
+  });
+}
+
+export function useDeleteUser() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => api.del(`/admin/users/${id}`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["admin-users"] }),
   });
 }
 

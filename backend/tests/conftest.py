@@ -16,9 +16,11 @@ _RECEIPTS_DIR = Path(__file__).parent / "_receipts"
 os.environ["RECEIPTS_DIR"] = str(_RECEIPTS_DIR)
 
 from fastapi.testclient import TestClient  # noqa: E402
+from sqlalchemy import select  # noqa: E402
 
 from app.core.database import Base, SessionLocal, engine  # noqa: E402
 from app.main import app  # noqa: E402
+from app.models import User  # noqa: E402
 from app.seed import seed  # noqa: E402
 
 
@@ -56,6 +58,12 @@ def db():
     with SessionLocal() as session:
         seed(session)
         yield session
+
+
+@pytest.fixture()
+def uid(db):
+    """ID admin ter-seed — dipakai test service/model yang butuh user_id."""
+    return db.scalar(select(User).order_by(User.id)).id
 
 
 @pytest.fixture()

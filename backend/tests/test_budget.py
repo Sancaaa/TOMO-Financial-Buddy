@@ -85,24 +85,31 @@ def test_explicit_total_counts_all_spending(auth_client):
     assert float(ov["total_remaining"]) == 500000
 
 
-def _spend_today(db, category_name, amount):
-    cat = db.scalar(select(Category).where(Category.name == category_name))
-    db.add(Transaction(amount=Decimal(amount), type="expense", category_id=cat.id, occurred_at=now_local()))
+def _spend_today(db, category_name, amount, uid):
+    cat = db.scalar(
+        select(Category).where(Category.user_id == uid, Category.name == category_name)
+    )
+    db.add(Transaction(
+        user_id=uid, amount=Decimal(amount), type="expense",
+        category_id=cat.id, occurred_at=now_local(),
+    ))
     db.commit()
     return cat
 
 
-def test_budget_alerts_dedup(db):
-    cat = db.scalar(select(Category).where(Category.name == "Makan"))
+def test_budget_alerts_dedup(db, uid):
+    cat = db.scalar(
+        select(Category).where(Category.user_id == uid, Category.name == "Makan")
+    )
     cat.monthly_budget = Decimal(100000)
     db.commit()
 
-    _spend_today(db, "Makan", 85000)
-    msgs = check_budget_alerts(db)
+    _spend_today(db, "Makan", 85000, uid)
+    msgs = check_budget_alerts(db, uid)
     assert any("80" in m or "sudah" in m for m in msgs)
     # rerun → tidak dobel
-    assert check_budget_alerts(db) == []
+    assert check_budget_alerts(db, uid) == []
 
-    _spend_today(db, "Makan", 20000)  # total 105k → jebol
-    msgs2 = check_budget_alerts(db)
+    _spend_today(db, "Makan", 20000, uid)  # total 105k → jebol
+    msgs2 = check_budget_alerts(db, uid)
     assert any("jebol" in m for m in msgs2)

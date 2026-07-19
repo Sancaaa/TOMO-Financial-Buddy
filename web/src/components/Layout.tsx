@@ -3,7 +3,9 @@ import { Tomato } from "./Tomato";
 import { Icon, type IconName } from "./Icon";
 import { useAuth } from "../lib/auth";
 
-const TABS: { to: string; label: string; icon: IconName; end: boolean; add?: boolean }[] = [
+type Tab = { to: string; label: string; icon: IconName; end: boolean; add?: boolean };
+
+const TABS: Tab[] = [
   { to: "/", label: "Beranda", icon: "home", end: true },
   { to: "/riwayat", label: "Riwayat", icon: "list", end: false },
   { to: "/tambah", label: "Tambah", icon: "plus", add: true, end: false },
@@ -11,8 +13,11 @@ const TABS: { to: string; label: string; icon: IconName; end: boolean; add?: boo
   { to: "/kelola", label: "Kelola", icon: "settings", end: false },
 ];
 
+const ADMIN_TAB: Tab = { to: "/admin", label: "Admin", icon: "award", end: false };
+
 export function Layout() {
-  const { logout } = useAuth();
+  const { logout, user } = useAuth();
+  const sideTabs = user?.is_admin ? [...TABS, ADMIN_TAB] : TABS;
 
   return (
     <>
@@ -24,7 +29,7 @@ export function Layout() {
             <span className="wordmark">TOMO</span>
           </div>
           <nav className="sidenav">
-            {TABS.map((t) => (
+            {sideTabs.map((t) => (
               <NavLink
                 key={t.to}
                 to={t.to}

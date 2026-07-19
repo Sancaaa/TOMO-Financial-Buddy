@@ -17,6 +17,9 @@ class SavingGoal(Base):
     __tablename__ = "saving_goals"
 
     id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), index=True
+    )
     name: Mapped[str] = mapped_column(String(80))
     target_amount: Mapped[Decimal] = mapped_column(Numeric(14, 2))
     saved_amount: Mapped[Decimal] = mapped_column(Numeric(14, 2), default=Decimal("0"))

@@ -32,8 +32,8 @@ def apply_balance(db: Session, tx: Transaction, sign: int) -> None:
     account.balance = account.balance + direction * tx.amount * sign
 
 
-def transaction_effects(db: Session) -> dict[int, Decimal]:
-    """Net efek semua transaksi per account_id.
+def transaction_effects(db: Session, user_id: int) -> dict[int, Decimal]:
+    """Net efek semua transaksi milik `user_id` per account_id.
 
     income = +amount · expense = -amount · transfer keluar (account_id) = -amount ·
     transfer masuk (dest_account_id) = +amount.
@@ -54,7 +54,7 @@ def transaction_effects(db: Session) -> dict[int, Decimal]:
                 0,
             ),
         )
-        .where(Transaction.account_id.is_not(None))
+        .where(Transaction.user_id == user_id, Transaction.account_id.is_not(None))
         .group_by(Transaction.account_id)
     ).all()
     for acc_id, net in rows:
@@ -63,7 +63,11 @@ def transaction_effects(db: Session) -> dict[int, Decimal]:
     # transfer-masuk (+) → berdasarkan dest_account_id
     rows2 = db.execute(
         select(Transaction.dest_account_id, func.coalesce(func.sum(Transaction.amount), 0))
-        .where(Transaction.type == "transfer", Transaction.dest_account_id.is_not(None))
+        .where(
+            Transaction.user_id == user_id,
+            Transaction.type == "transfer",
+            Transaction.dest_account_id.is_not(None),
+        )
         .group_by(Transaction.dest_account_id)
     ).all()
     for acc_id, net in rows2:
@@ -72,7 +76,7 @@ def transaction_effects(db: Session) -> dict[int, Decimal]:
     return effects
 
 
-def reconcile_balances(db: Session) -> list[dict]:
+def reconcile_balances(db: Session, user_id: int) -> list[dict]:
     """Hitung ulang saldo tiap akun = opening_balance + Σ efek transaksi.
 
     Akun tanpa opening_balance di-baseline dari kondisi sekarang (dianggap benar),
@@ -80,9 +84,9 @@ def reconcile_balances(db: Session) -> list[dict]:
     berikutnya mengoreksi drift (transaksi yang masuk tanpa lewat apply_balance).
     Kembalikan daftar akun yang saldonya dikoreksi.
     """
-    effects = transaction_effects(db)
+    effects = transaction_effects(db, user_id)
     corrections: list[dict] = []
-    for acc in db.scalars(select(Account)).all():
+    for acc in db.scalars(select(Account).where(Account.user_id == user_id)).all():
         eff = effects.get(acc.id, Decimal(0))
         if acc.opening_balance is None:
             acc.opening_balance = acc.balance - eff  # baseline dari kondisi sekarang

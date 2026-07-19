@@ -7,9 +7,10 @@ import { History } from "./pages/History";
 import { Add } from "./pages/Add";
 import { Analytics } from "./pages/Analytics";
 import { Manage } from "./pages/Manage";
+import { Admin } from "./pages/Admin";
 
 export function App() {
-  const { authed } = useAuth();
+  const { authed, user } = useAuth();
 
   if (!authed) {
     return (
@@ -29,6 +30,10 @@ export function App() {
         <Route path="/tambah" element={<Add />} />
         <Route path="/analitik" element={<Analytics />} />
         <Route path="/kelola" element={<Manage />} />
+        <Route
+          path="/admin"
+          element={user?.is_admin ? <Admin /> : <Navigate to="/" replace />}
+        />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>
     </Routes>

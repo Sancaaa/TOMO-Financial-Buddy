@@ -24,8 +24,14 @@ class PeriodSummary:
     count: int = 0
 
 
-def period_summary(db: Session, start: datetime, end: datetime) -> PeriodSummary:
-    window = (Transaction.occurred_at >= start, Transaction.occurred_at <= end)
+def period_summary(
+    db: Session, start: datetime, end: datetime, user_id: int
+) -> PeriodSummary:
+    window = (
+        Transaction.user_id == user_id,
+        Transaction.occurred_at >= start,
+        Transaction.occurred_at <= end,
+    )
 
     totals = db.execute(
         select(Transaction.type, func.coalesce(func.sum(Transaction.amount), 0))
@@ -68,7 +74,7 @@ def _month_bounds(year: int, mon: int) -> tuple[datetime, datetime]:
     return start, end
 
 
-def monthly_trend(db: Session, months: int, ref: datetime) -> list[MonthPoint]:
+def monthly_trend(db: Session, months: int, ref: datetime, user_id: int) -> list[MonthPoint]:
     """Tren `months` bulan terakhir sampai bulan `ref` (kronologis menaik)."""
     year, mon = ref.year, ref.month
     seq: list[tuple[int, int]] = []
@@ -85,7 +91,11 @@ def monthly_trend(db: Session, months: int, ref: datetime) -> list[MonthPoint]:
         start, end = _month_bounds(y, m)
         rows = db.execute(
             select(Transaction.type, func.coalesce(func.sum(Transaction.amount), 0))
-            .where(Transaction.occurred_at >= start, Transaction.occurred_at <= end)
+            .where(
+                Transaction.user_id == user_id,
+                Transaction.occurred_at >= start,
+                Transaction.occurred_at <= end,
+            )
             .group_by(Transaction.type)
         ).all()
         totals = {t: Decimal(v) for t, v in rows}

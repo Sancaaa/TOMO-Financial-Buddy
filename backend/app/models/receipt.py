@@ -1,7 +1,7 @@
 from datetime import datetime, timezone
 from decimal import Decimal
 
-from sqlalchemy import JSON, DateTime, Numeric, String, Text
+from sqlalchemy import JSON, DateTime, ForeignKey, Numeric, String, Text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -15,6 +15,9 @@ class Receipt(Base):
     __tablename__ = "receipts"
 
     id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), index=True
+    )
     file_path: Mapped[str] = mapped_column(Text)
     ocr_status: Mapped[str] = mapped_column(String(10), default="pending")  # done|failed|pending
     merchant: Mapped[str | None] = mapped_column(String(120), nullable=True)

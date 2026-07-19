@@ -13,6 +13,9 @@ class RecurringTx(Base):
     __tablename__ = "recurring_txs"
 
     id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), index=True
+    )
     amount: Mapped[Decimal] = mapped_column(Numeric(14, 2))
     type: Mapped[str] = mapped_column(String(10), default="expense")
     category_id: Mapped[int | None] = mapped_column(

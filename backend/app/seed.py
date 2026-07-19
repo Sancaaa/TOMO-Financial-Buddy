@@ -1,6 +1,7 @@
-"""Isi data awal sekali saat startup: user pertama, kategori default, akun cash.
+"""Isi data awal: admin pertama + kategori/akun default per-user.
 
-Idempotent — hanya membuat data jika tabel terkait masih kosong.
+`seed()` idempotent — hanya membuat admin jika tabel users kosong.
+`seed_user_defaults()` dipakai ulang saat admin membuat user baru (lihat api/admin.py).
 """
 
 from sqlalchemy import func, select
@@ -28,33 +29,24 @@ DEFAULT_CATEGORIES: list[tuple[str, str, str]] = [
 
 
 def seed(db: Session) -> None:
-    _seed_user(db)
-    _seed_categories(db)
-    _seed_account(db)
+    """Buat admin pertama + defaultnya bila DB benar-benar kosong."""
+    if db.scalar(select(func.count()).select_from(User)):
+        return  # sudah ada user — jangan seed ulang
+    admin = User(
+        username=settings.initial_username,
+        password_hash=hash_password(settings.initial_password),
+        is_admin=True,  # user pertama = admin (bisa kelola user lain)
+        telegram_chat_id=settings.telegram_chat_id,
+        settings={},
+    )
+    db.add(admin)
+    db.flush()  # butuh admin.id untuk kategori/akun default
+    seed_user_defaults(db, admin.id)
     db.commit()
 
 
-def _seed_user(db: Session) -> None:
-    if db.scalar(select(func.count()).select_from(User)):
-        return
-    db.add(
-        User(
-            username=settings.initial_username,
-            password_hash=hash_password(settings.initial_password),
-            telegram_chat_id=settings.telegram_chat_id,
-            settings={},
-        )
-    )
-
-
-def _seed_categories(db: Session) -> None:
-    if db.scalar(select(func.count()).select_from(Category)):
-        return
+def seed_user_defaults(db: Session, user_id: int) -> None:
+    """Kategori default + akun 'Cash' untuk satu user (dipanggil saat user dibuat)."""
     for name, ctype, icon in DEFAULT_CATEGORIES:
-        db.add(Category(name=name, type=ctype, icon=icon))
-
-
-def _seed_account(db: Session) -> None:
-    if db.scalar(select(func.count()).select_from(Account)):
-        return
-    db.add(Account(name="Cash", type="cash"))
+        db.add(Category(user_id=user_id, name=name, type=ctype, icon=icon))
+    db.add(Account(user_id=user_id, name="Cash", type="cash"))

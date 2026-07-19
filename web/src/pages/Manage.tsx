@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import { Sheet } from "../components/Sheet";
 import { PageHead } from "../components/PageHead";
 import { BudgetBar } from "../components/BudgetBar";
@@ -6,6 +7,8 @@ import { Tomato } from "../components/Tomato";
 import { Icon, categoryIcon } from "../components/Icon";
 import { categoryColor } from "../lib/colors";
 import { rupiah } from "../lib/format";
+import { useAuth } from "../lib/auth";
+import { useLinkCode, useUnlinkTelegram } from "../lib/queries";
 import {
   useAccounts,
   useBudgets,
@@ -25,6 +28,71 @@ import {
   useSetBudget,
 } from "../lib/queries";
 import type { Account, Category, SavingGoal } from "../lib/types";
+
+function TelegramLinkCard() {
+  const { user, refreshUser } = useAuth();
+  const linkCode = useLinkCode();
+  const unlink = useUnlinkTelegram();
+  const [code, setCode] = useState<string | null>(null);
+
+  const linked = Boolean(user?.telegram_chat_id);
+
+  async function makeCode() {
+    const r = await linkCode.mutateAsync();
+    setCode(r.code);
+  }
+  async function doUnlink() {
+    await unlink.mutateAsync();
+    setCode(null);
+    refreshUser();
+  }
+
+  return (
+    <div className="card stack">
+      <div className="between">
+        <div className="section-title" style={{ margin: 0 }}>Tautkan Telegram</div>
+        {linked && <span className="pill ico-txt"><Icon name="check" size={13} /> tertaut</span>}
+      </div>
+      {linked ? (
+        <>
+          <p className="hint">Bot Telegram terhubung ke akun ini — kamu bisa catat lewat chat.</p>
+          <button className="btn btn-danger btn-sm" onClick={doUnlink} disabled={unlink.isPending}>
+            Putuskan tautan
+          </button>
+        </>
+      ) : code ? (
+        <>
+          <p className="hint">Kirim pesan ini ke bot TOMO di Telegram:</p>
+          <div
+            className="card pad-sm"
+            style={{ fontFamily: "monospace", fontSize: 18, textAlign: "center", userSelect: "all" }}
+          >
+            /link {code}
+          </div>
+          <p className="hint">Kode berlaku 15 menit. Setelah terkirim, buka ulang halaman ini.</p>
+        </>
+      ) : (
+        <>
+          <p className="hint">Hubungkan Telegram agar bisa catat transaksi & terima ringkasan harian lewat chat.</p>
+          <button className="btn btn-primary btn-sm" onClick={makeCode} disabled={linkCode.isPending}>
+            {linkCode.isPending ? "…" : "Buat kode tautan"}
+          </button>
+        </>
+      )}
+    </div>
+  );
+}
+
+function AdminLinkCard() {
+  const { user } = useAuth();
+  if (!user?.is_admin) return null;
+  return (
+    <Link to="/admin" className="card pad-sm between" style={{ textDecoration: "none", color: "inherit" }}>
+      <span className="ico-txt"><Icon name="award" size={18} /> Kelola User (admin)</span>
+      <span className="hint">buka →</span>
+    </Link>
+  );
+}
 
 export function Manage() {
   const { data: categories } = useCategories();
@@ -47,6 +115,9 @@ export function Manage() {
   return (
     <>
       <PageHead eyebrow="atur" title="Kelola" />
+
+      <AdminLinkCard />
+      <TelegramLinkCard />
 
       <div className="cols">
         <div className="col">

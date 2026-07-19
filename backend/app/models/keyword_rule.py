@@ -16,6 +16,9 @@ class KeywordRule(Base):
     __table_args__ = (UniqueConstraint("keyword", "category_id", name="uq_keyword_category"),)
 
     id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), index=True
+    )
     keyword: Mapped[str] = mapped_column(String(40), index=True)
     category_id: Mapped[int] = mapped_column(
         ForeignKey("categories.id", ondelete="CASCADE")

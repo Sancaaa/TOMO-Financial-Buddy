@@ -81,21 +81,29 @@ def tokenize(text: str) -> list[str]:
     ]
 
 
-def _category_by_name(db: Session, name: str, ttype: str) -> Category | None:
+def _category_by_name(db: Session, name: str, ttype: str, user_id: int) -> Category | None:
     return db.scalar(
-        select(Category).where(Category.name == name, Category.type == ttype)
+        select(Category).where(
+            Category.user_id == user_id, Category.name == name, Category.type == ttype
+        )
     )
 
 
-def suggest_category(db: Session, description: str, ttype: str) -> Category | None:
+def suggest_category(
+    db: Session, description: str, ttype: str, user_id: int
+) -> Category | None:
     tokens = tokenize(description)
 
-    # 1. aturan hasil belajar
+    # 1. aturan hasil belajar (hanya milik user ini)
     if tokens:
         rows = db.execute(
             select(KeywordRule.category_id, KeywordRule.hits)
             .join(Category, Category.id == KeywordRule.category_id)
-            .where(KeywordRule.keyword.in_(tokens), Category.type == ttype)
+            .where(
+                KeywordRule.user_id == user_id,
+                KeywordRule.keyword.in_(tokens),
+                Category.type == ttype,
+            )
         ).all()
         if rows:
             scores: dict[int, int] = {}
@@ -108,31 +116,46 @@ def suggest_category(db: Session, description: str, ttype: str) -> Category | No
     builtin = _builtin_lookup(ttype)
     for token in tokens:
         if token in builtin:
-            cat = _category_by_name(db, builtin[token], ttype)
+            cat = _category_by_name(db, builtin[token], ttype, user_id)
             if cat:
                 return cat
 
     # 3. fallback
     if ttype == "income":
-        return _category_by_name(db, "Kiriman", "income") or db.scalar(
-            select(Category).where(Category.type == "income").order_by(Category.id)
+        return _category_by_name(db, "Kiriman", "income", user_id) or db.scalar(
+            select(Category)
+            .where(Category.user_id == user_id, Category.type == "income")
+            .order_by(Category.id)
         )
-    return _category_by_name(db, "Lainnya", "expense") or db.scalar(
-        select(Category).where(Category.type == "expense").order_by(Category.id)
+    return _category_by_name(db, "Lainnya", "expense", user_id) or db.scalar(
+        select(Category)
+        .where(Category.user_id == user_id, Category.type == "expense")
+        .order_by(Category.id)
     )
 
 
 def learn_from_correction(db: Session, description: str, category: Category) -> None:
-    """Petakan token deskripsi ke kategori yang dipilih user, naikkan hits."""
+    """Petakan token deskripsi ke kategori yang dipilih user, naikkan hits.
+
+    `category` sudah milik user tertentu → rule mewarisi `category.user_id`.
+    """
     for token in set(tokenize(description)):
         rule = db.scalar(
             select(KeywordRule).where(
+                KeywordRule.user_id == category.user_id,
                 KeywordRule.keyword == token,
                 KeywordRule.category_id == category.id,
             )
         )
         if rule is None:
-            db.add(KeywordRule(keyword=token, category_id=category.id, hits=1))
+            db.add(
+                KeywordRule(
+                    user_id=category.user_id,
+                    keyword=token,
+                    category_id=category.id,
+                    hits=1,
+                )
+            )
         else:
             rule.hits += 1
     db.commit()

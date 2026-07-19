@@ -23,9 +23,7 @@ def webhook(
         return Response(status_code=status.HTTP_403_FORBIDDEN)
 
     try:
-        handle_update(
-            payload, db, TelegramClient(), settings.telegram_chat_id or None
-        )
+        handle_update(payload, db, TelegramClient())
     except Exception:  # jangan sampai Telegram retry tanpa henti
         log.exception("gagal memproses update telegram")
 

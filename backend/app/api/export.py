@@ -9,14 +9,22 @@ from sqlalchemy.orm import Session
 from app.api.deps import get_current_user
 from app.api.transactions import _month_range
 from app.core.database import get_db
-from app.models import Transaction
+from app.models import Transaction, User
 
 router = APIRouter(tags=["export"], dependencies=[Depends(get_current_user)])
 
 
 @router.get("/export")
-def export_csv(month: str | None = None, db: Session = Depends(get_db)) -> StreamingResponse:
-    stmt = select(Transaction).order_by(Transaction.occurred_at)
+def export_csv(
+    month: str | None = None,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+) -> StreamingResponse:
+    stmt = (
+        select(Transaction)
+        .where(Transaction.user_id == user.id)
+        .order_by(Transaction.occurred_at)
+    )
     if month is not None:
         start, end = _month_range(month)
         stmt = stmt.where(Transaction.occurred_at >= start, Transaction.occurred_at <= end)

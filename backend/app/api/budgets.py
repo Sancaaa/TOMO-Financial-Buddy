@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user
 from app.core.database import get_db
+from app.models import User
 from app.schemas.budget import (
     BudgetOverviewOut,
     BudgetSet,
@@ -33,13 +34,21 @@ def _to_overview_out(ov) -> BudgetOverviewOut:
 
 
 @router.get("", response_model=BudgetOverviewOut)
-def get_budgets(period: str | None = None, db: Session = Depends(get_db)) -> BudgetOverviewOut:
-    return _to_overview_out(overview(db, period))
+def get_budgets(
+    period: str | None = None,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+) -> BudgetOverviewOut:
+    return _to_overview_out(overview(db, user.id, period))
 
 
 @router.get("/safe-to-spend", response_model=SafeToSpendOut)
-def get_safe_to_spend(period: str | None = None, db: Session = Depends(get_db)) -> SafeToSpendOut:
-    ov = overview(db, period)
+def get_safe_to_spend(
+    period: str | None = None,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+) -> SafeToSpendOut:
+    ov = overview(db, user.id, period)
     return SafeToSpendOut(
         period=ov.period,
         total_budget=ov.total_budget,
@@ -51,5 +60,9 @@ def get_safe_to_spend(period: str | None = None, db: Session = Depends(get_db)) 
 
 
 @router.put("", status_code=status.HTTP_204_NO_CONTENT)
-def put_budget(payload: BudgetSet, db: Session = Depends(get_db)) -> None:
-    set_budget(db, payload.category_id, payload.amount, payload.period)
+def put_budget(
+    payload: BudgetSet,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+) -> None:
+    set_budget(db, payload.category_id, payload.amount, user.id, payload.period)

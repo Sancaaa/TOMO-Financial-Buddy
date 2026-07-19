@@ -30,11 +30,11 @@ class Draft:
 
 
 def process_receipt(
-    db: Session, image_bytes: bytes, media_type: str = "image/jpeg"
+    db: Session, image_bytes: bytes, user_id: int, media_type: str = "image/jpeg"
 ) -> tuple[Receipt, ocr_service.ReceiptExtraction | None]:
     """Simpan foto + jalankan OCR. Kembalikan (receipt, extraction|None)."""
     path = save_receipt(image_bytes, media_type)
-    receipt = Receipt(file_path=path, ocr_status="pending")
+    receipt = Receipt(user_id=user_id, file_path=path, ocr_status="pending")
     db.add(receipt)
     db.flush()
 
@@ -59,11 +59,13 @@ def process_receipt(
     return receipt, extraction
 
 
-def build_draft(db: Session, extraction: ocr_service.ReceiptExtraction) -> Draft:
+def build_draft(
+    db: Session, extraction: ocr_service.ReceiptExtraction, user_id: int
+) -> Draft:
     """Rakit draft transaksi dari hasil ekstraksi, plus tebakan kategori."""
     item_text = " ".join(i.name for i in extraction.items)
     hint = " ".join(filter(None, [extraction.merchant, extraction.category_hint, item_text]))
-    category = suggest_category(db, hint, "expense")
+    category = suggest_category(db, hint, "expense", user_id)
     return Draft(
         amount=extraction.total,
         type="expense",

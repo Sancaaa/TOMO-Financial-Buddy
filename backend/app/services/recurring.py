@@ -40,6 +40,7 @@ def run_due_recurring(db: Session, today: date) -> int:
         while r.active and r.next_run <= today and guard < 12:
             occurred = datetime.combine(r.next_run, time(12, 0), tzinfo=LOCAL_TZ)
             tx = Transaction(
+                user_id=r.user_id,
                 amount=r.amount,
                 type=r.type,
                 category_id=r.category_id,

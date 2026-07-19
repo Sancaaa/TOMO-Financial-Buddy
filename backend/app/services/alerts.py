@@ -12,9 +12,13 @@ from app.services.money import rupiah
 _THRESHOLDS = (80, 100)
 
 
-def _already_sent(db: Session, category_id: int | None, period: str, threshold: int) -> bool:
+def _already_sent(
+    db: Session, category_id: int | None, period: str, threshold: int, user_id: int
+) -> bool:
     stmt = select(BudgetAlert).where(
-        BudgetAlert.period == period, BudgetAlert.threshold == threshold
+        BudgetAlert.user_id == user_id,
+        BudgetAlert.period == period,
+        BudgetAlert.threshold == threshold,
     )
     stmt = stmt.where(
         BudgetAlert.category_id.is_(None)
@@ -30,9 +34,9 @@ def _message(name: str, pct: int, spent: Decimal, budget: Decimal, threshold: in
     return f"🍅 Budget {name} sudah {pct}% nih — {rupiah(spent)} dari {rupiah(budget)}. Pelan-pelan ya."
 
 
-def check_budget_alerts(db: Session, period: str | None = None) -> list[str]:
+def check_budget_alerts(db: Session, user_id: int, period: str | None = None) -> list[str]:
     period = period or current_period()
-    ov = overview(db, period)
+    ov = overview(db, user_id, period)
 
     targets: list[tuple[int | None, str, Decimal, Decimal]] = [
         (c.category_id, c.name, c.budget, c.spent) for c in ov.categories if c.budget > 0
@@ -44,8 +48,13 @@ def check_budget_alerts(db: Session, period: str | None = None) -> list[str]:
     for category_id, name, budget, spent in targets:
         pct = int((spent / budget * 100).to_integral_value())
         for threshold in _THRESHOLDS:
-            if pct >= threshold and not _already_sent(db, category_id, period, threshold):
-                db.add(BudgetAlert(category_id=category_id, period=period, threshold=threshold))
+            if pct >= threshold and not _already_sent(db, category_id, period, threshold, user_id):
+                db.add(
+                    BudgetAlert(
+                        user_id=user_id, category_id=category_id,
+                        period=period, threshold=threshold,
+                    )
+                )
                 messages.append(_message(name, pct, spent, budget, threshold))
     db.commit()
     return messages

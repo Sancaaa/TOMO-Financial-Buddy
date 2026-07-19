@@ -10,6 +10,9 @@ class Category(Base):
     __tablename__ = "categories"
 
     id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), index=True
+    )
     name: Mapped[str] = mapped_column(String(60), index=True)
     icon: Mapped[str | None] = mapped_column(String(40), nullable=True)
     type: Mapped[str] = mapped_column(String(10), default="expense")  # expense | income

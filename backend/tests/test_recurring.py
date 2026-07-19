@@ -18,10 +18,10 @@ def test_next_month_dom_and_first_run():
     assert first_run(5, date(2026, 7, 10)) == date(2026, 8, 5)
 
 
-def test_run_due_recurring(db):
+def test_run_due_recurring(db, uid):
     acc = db.scalars(select(Account)).first()
     r = RecurringTx(
-        amount=Decimal(800000), type="expense", account_id=acc.id,
+        user_id=uid, amount=Decimal(800000), type="expense", account_id=acc.id,
         description="Kos", day_of_month=1, next_run=date(2026, 7, 1),
     )
     db.add(r)
@@ -42,8 +42,8 @@ def test_run_due_recurring(db):
     assert run_due_recurring(db, date(2026, 7, 15)) == 0
 
 
-def test_run_due_recurring_catches_up(db):
-    r = RecurringTx(amount=Decimal(50000), type="expense", day_of_month=1, next_run=date(2026, 5, 1))
+def test_run_due_recurring_catches_up(db, uid):
+    r = RecurringTx(user_id=uid, amount=Decimal(50000), type="expense", day_of_month=1, next_run=date(2026, 5, 1))
     db.add(r)
     db.commit()
     # dari Mei sampai Juli = 3 kejadian (Mei, Jun, Jul)

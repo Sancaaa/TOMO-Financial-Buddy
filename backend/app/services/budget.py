@@ -63,11 +63,12 @@ def _prev_period(period: str) -> str:
     return f"{year:04d}-{mon:02d}"
 
 
-def _spent_by_category(db: Session, period: str) -> dict[int | None, Decimal]:
+def _spent_by_category(db: Session, period: str, user_id: int) -> dict[int | None, Decimal]:
     start, end, _ = _bounds(period)
     rows = db.execute(
         select(Transaction.category_id, func.coalesce(func.sum(Transaction.amount), 0))
         .where(
+            Transaction.user_id == user_id,
             Transaction.type == "expense",
             Transaction.occurred_at >= start,
             Transaction.occurred_at <= end,
@@ -94,10 +95,18 @@ def _status(pct: int) -> str:
 
 
 def effective_budget(
-    db: Session, category_id: int | None, period: str, category: Category | None = None
+    db: Session,
+    category_id: int | None,
+    period: str,
+    user_id: int,
+    category: Category | None = None,
 ) -> Decimal | None:
     override = db.scalar(
-        select(Budget).where(Budget.category_id == category_id, Budget.period == period)
+        select(Budget).where(
+            Budget.user_id == user_id,
+            Budget.category_id == category_id,
+            Budget.period == period,
+        )
     )
     if override is not None:
         return override.amount
@@ -106,12 +115,16 @@ def effective_budget(
         return cat.monthly_budget if cat and cat.monthly_budget is not None else None
     # total: default berulang (period NULL)
     default = db.scalar(
-        select(Budget).where(Budget.category_id.is_(None), Budget.period.is_(None))
+        select(Budget).where(
+            Budget.user_id == user_id,
+            Budget.category_id.is_(None),
+            Budget.period.is_(None),
+        )
     )
     return default.amount if default is not None else None
 
 
-def overview(db: Session, period: str | None = None) -> BudgetOverview:
+def overview(db: Session, user_id: int, period: str | None = None) -> BudgetOverview:
     period = period or current_period()
     start, end, days_in_month = _bounds(period)
     now = now_local()
@@ -120,7 +133,7 @@ def overview(db: Session, period: str | None = None) -> BudgetOverview:
     day_today = now.day if is_current else days_in_month
     days_left = max(days_in_month - day_today + 1, 0) if is_current else 0
 
-    spent_by_cat = _spent_by_category(db, period)
+    spent_by_cat = _spent_by_category(db, period, user_id)
     all_spent = sum(spent_by_cat.values(), Decimal(0))
 
     prev_period = _prev_period(period)
@@ -130,15 +143,17 @@ def overview(db: Session, period: str | None = None) -> BudgetOverview:
     sum_cat_budget = Decimal(0)
     sum_budgeted_spent = Decimal(0)  # belanja di kategori yang punya budget saja
     expense_cats = db.scalars(
-        select(Category).where(Category.type == "expense").order_by(Category.name)
+        select(Category).where(
+            Category.user_id == user_id, Category.type == "expense"
+        ).order_by(Category.name)
     ).all()
     for cat in expense_cats:
-        budget = effective_budget(db, cat.id, period, cat)
+        budget = effective_budget(db, cat.id, period, user_id, cat)
         # rollover: tambahkan sisa positif budget bulan lalu
         if budget is not None and cat.budget_rollover:
             if _prev_spent is None:
-                _prev_spent = _spent_by_category(db, prev_period)
-            prev_budget = effective_budget(db, cat.id, prev_period, cat)
+                _prev_spent = _spent_by_category(db, prev_period, user_id)
+            prev_budget = effective_budget(db, cat.id, prev_period, user_id, cat)
             if prev_budget:
                 leftover = prev_budget - _prev_spent.get(cat.id, Decimal(0))
                 if leftover > 0:
@@ -168,7 +183,7 @@ def overview(db: Session, period: str | None = None) -> BudgetOverview:
     #   - total eksplisit → payung untuk semua belanja → total_spent = all_spent
     #   - total diturunkan (jumlah budget kategori) → hanya belanja di kategori
     #     berbudget yang dihitung (belanja tak-berbudget tidak menggerus envelope)
-    explicit_total = effective_budget(db, None, period)
+    explicit_total = effective_budget(db, None, period, user_id)
     if explicit_total is not None:
         total_budget = explicit_total
         total_spent = all_spent
@@ -208,9 +223,13 @@ def overview(db: Session, period: str | None = None) -> BudgetOverview:
 
 
 def set_budget(
-    db: Session, category_id: int | None, amount: Decimal | None, period: str | None = None
+    db: Session,
+    category_id: int | None,
+    amount: Decimal | None,
+    user_id: int,
+    period: str | None = None,
 ) -> None:
-    """Set/hapus budget.
+    """Set/hapus budget (dibatasi ke `user_id`).
 
     category_id None + period None  → budget TOTAL default (tabel budgets).
     category_id set  + period None  → set Category.monthly_budget (default per-kategori).
@@ -219,13 +238,17 @@ def set_budget(
     """
     if category_id is not None and period is None:
         cat = db.get(Category, category_id)
-        if cat is not None:
+        if cat is not None and cat.user_id == user_id:
             cat.monthly_budget = amount
         db.commit()
         return
 
     existing = db.scalar(
-        select(Budget).where(Budget.category_id == category_id, Budget.period == period)
+        select(Budget).where(
+            Budget.user_id == user_id,
+            Budget.category_id == category_id,
+            Budget.period == period,
+        )
     )
     if amount is None:
         if existing is not None:
@@ -233,5 +256,5 @@ def set_budget(
     elif existing is not None:
         existing.amount = amount
     else:
-        db.add(Budget(category_id=category_id, period=period, amount=amount))
+        db.add(Budget(user_id=user_id, category_id=category_id, period=period, amount=amount))
     db.commit()
