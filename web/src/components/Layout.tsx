@@ -56,7 +56,7 @@ export function Layout() {
       </div>
 
       <nav className="bottomnav">
-        {TABS.map((t) => (
+        {sideTabs.map((t) => (
           <NavLink
             key={t.to}
             to={t.to}
