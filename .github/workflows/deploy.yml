@@ -1,0 +1,16 @@
+name: Deploy to Local Server
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: self-hosted
+    
+    steps:
+      - name: Run Deploy Script
+        run: |
+          cd $HOME/project/TOMO-Financial-Buddy
+          bash deploy.sh
