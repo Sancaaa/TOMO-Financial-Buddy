@@ -1,8 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <style name="Theme.TOMO" parent="Theme.AppCompat.DayNight.NoActionBar">
+        <!-- Tomato system bars, matched to the web app's theme-color -->
         <item name="android:statusBarColor">@color/status_bar</item>
         <item name="android:navigationBarColor">@color/status_bar</item>
-        <item name="android:windowBackground">@color/status_bar</item>
+        <!-- Dark tomato bars => keep light (white) system icons -->
+        <item name="android:windowLightStatusBar">false</item>
+        <!-- Warm, branded cold-start splash instead of a blank/dark flash -->
+        <item name="android:windowBackground">@drawable/splash_background</item>
     </style>
 </resources>

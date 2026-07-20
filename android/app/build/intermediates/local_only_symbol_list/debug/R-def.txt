@@ -1,0 +1,20 @@
+R_DEF: Internal format may change without notice
+local
+color black
+color status_bar
+color tomato_dark
+color tomato_green
+color tomato_red
+color white
+drawable ic_launcher_background
+drawable ic_launcher_foreground
+drawable nobg_logotomo
+drawable progress_bar
+id progressBar
+id swipeRefresh
+id webView
+layout activity_main
+mipmap ic_launcher
+string app_name
+style Theme.TOMO
+xml network_security_config

@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="black">#000000</color>
+    <color name="status_bar">#1A1A2E</color>
+    <color name="tomato_dark">#E5533D</color>
+    <color name="tomato_green">#4CAF50</color>
+    <color name="tomato_red">#FF6347</color>
+    <color name="white">#FFFFFF</color>
+    <string name="app_name">TOMO</string>
+    <style name="Theme.TOMO" parent="Theme.AppCompat.DayNight.NoActionBar">
+        <item name="android:statusBarColor">@color/status_bar</item>
+        <item name="android:navigationBarColor">@color/status_bar</item>
+        <item name="android:windowBackground">@color/status_bar</item>
+    </style>
+</resources>

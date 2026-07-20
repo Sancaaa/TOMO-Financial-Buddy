@@ -34,10 +34,14 @@ class MainActivity : AppCompatActivity() {
         progressBar = findViewById(R.id.progressBar)
         swipeRefresh = findViewById(R.id.swipeRefresh)
 
-        // Configure SwipeRefreshLayout
+        // Configure SwipeRefreshLayout — tomato / leaf / gold spinner on warm paper
         swipeRefresh.setColorSchemeColors(
-            resources.getColor(R.color.tomato_red, theme),
-            resources.getColor(R.color.tomato_green, theme)
+            resources.getColor(R.color.tomato, theme),
+            resources.getColor(R.color.leaf, theme),
+            resources.getColor(R.color.gold, theme)
+        )
+        swipeRefresh.setProgressBackgroundColorSchemeColor(
+            resources.getColor(R.color.paper, theme)
         )
         swipeRefresh.setOnRefreshListener {
             if (isErrorShowing) {

@@ -1,9 +1,33 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="tomato_red">#FF6347</color>
-    <color name="tomato_dark">#E5533D</color>
-    <color name="tomato_green">#4CAF50</color>
+    <!-- TOMO brand palette — matched to the live web app (tomo.sanca.site) -->
+    <!-- Tomato -->
+    <color name="tomato">#DE3B26</color>
+    <color name="tomato_bright">#FF5638</color>
+    <color name="tomato_deep">#AB2415</color>
+    <color name="tomato_pale">#FBD4CB</color>
+    <!-- Kept names referenced from code -->
+    <color name="tomato_red">#C0392B</color>
+    <color name="tomato_green">#3FA74C</color>
+
+    <!-- Leaf / gold accents -->
+    <color name="leaf">#3FA74C</color>
+    <color name="leaf_dark">#237A2C</color>
+    <color name="gold">#E6A52C</color>
+
+    <!-- Warm paper / cream surfaces -->
+    <color name="cream">#F4EAD9</color>
+    <color name="paper">#FFFAF1</color>
+    <color name="sand">#DCCCB2</color>
+
+    <!-- Ink text -->
+    <color name="ink">#201105</color>
+    <color name="ink_soft">#4A3626</color>
+    <color name="ink_muted">#86735C</color>
+
     <color name="white">#FFFFFF</color>
     <color name="black">#000000</color>
-    <color name="status_bar">#1A1A2E</color>
+
+    <!-- System bars: match the web app's declared theme-color (#C0392B) -->
+    <color name="status_bar">#C0392B</color>
 </resources>
