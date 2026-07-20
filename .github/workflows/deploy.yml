@@ -8,8 +8,13 @@ on:
 jobs:
   deploy:
     runs-on: self-hosted
-    
+
     steps:
+      - name: Run Unit Tests
+        run: |
+          cd $HOME/project/TOMO-Financial-Buddy/backend
+          pytest
+
       - name: Run Deploy Script
         run: |
           cd $HOME/project/TOMO-Financial-Buddy
