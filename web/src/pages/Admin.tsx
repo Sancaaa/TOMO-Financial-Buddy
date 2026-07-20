@@ -1,7 +1,12 @@
 import { useState } from "react";
 import { PageHead } from "../components/PageHead";
 import { Icon } from "../components/Icon";
-import { useAdminUsers, useCreateUser, useDeleteUser, useUpdateUser } from "../lib/queries";
+import {
+  useAdminUsers,
+  useCreateUser,
+  useDeleteUser,
+  useUpdateUser,
+} from "../lib/queries";
 import { useAuth } from "../lib/auth";
 import type { AdminUser } from "../lib/types";
 
@@ -35,7 +40,10 @@ export function Admin() {
       <PageHead eyebrow="admin" title="Kelola User" />
 
       {flash && (
-        <div className="card pad-sm ico-txt" style={{ color: "var(--leaf-dark)" }}>
+        <div
+          className="card pad-sm ico-txt"
+          style={{ color: "var(--leaf-dark)" }}
+        >
           <Icon name="check" size={18} /> {flash}
         </div>
       )}
@@ -45,7 +53,11 @@ export function Admin() {
         <div className="row">
           <div className="field">
             <label>Username</label>
-            <input value={username} onChange={(e) => setUsername(e.target.value)} autoComplete="off" />
+            <input
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              autoComplete="off"
+            />
           </div>
           <div className="field">
             <label>Password (min 8)</label>
@@ -58,7 +70,11 @@ export function Admin() {
           </div>
         </div>
         <label className="ico-txt" style={{ fontSize: 14 }}>
-          <input type="checkbox" checked={isAdmin} onChange={(e) => setIsAdmin(e.target.checked)} />
+          <input
+            type="checkbox"
+            checked={isAdmin}
+            onChange={(e) => setIsAdmin(e.target.checked)}
+          />
           Jadikan admin
         </label>
         {err && <div className="err">{err}</div>}
@@ -102,9 +118,13 @@ function UserRow({ u, selfId }: { u: AdminUser; selfId?: number }) {
     }
   }
 
-
   async function del() {
-    if (!confirm(`Hapus user "${u.username}" beserta semua datanya? Tak bisa dibatalkan.`)) return;
+    if (
+      !confirm(
+        `Hapus user "${u.username}" beserta semua datanya? Proses ini tidak bisa dibatalkan.`,
+      )
+    )
+      return;
     setBusy(true);
     try {
       await remove.mutateAsync(u.id);
@@ -117,7 +137,14 @@ function UserRow({ u, selfId }: { u: AdminUser; selfId?: number }) {
 
   return (
     <div className="tx" style={{ cursor: "default" }}>
-      <span className="cat-badge" style={{ "--c": u.is_admin ? "var(--tomato)" : "var(--ink-muted)" } as React.CSSProperties}>
+      <span
+        className="cat-badge"
+        style={
+          {
+            "--c": u.is_admin ? "var(--tomato)" : "var(--ink-muted)",
+          } as React.CSSProperties
+        }
+      >
         <Icon name={u.is_admin ? "award" : "wallet"} size={18} />
       </span>
       <span className="body">
@@ -127,13 +154,22 @@ function UserRow({ u, selfId }: { u: AdminUser; selfId?: number }) {
         </span>
         <span className="meta">
           {u.is_admin ? "Admin · " : ""}
-          {u.tx_count} transaksi · Telegram {u.telegram_linked ? "tertaut" : "belum"}
+          {u.tx_count} transaksi · Telegram{" "}
+          {u.telegram_linked ? "tertaut" : "belum"}
         </span>
       </span>
       <span style={{ display: "flex", gap: 6 }}>
-        <button className="btn btn-sm" onClick={resetPassword} disabled={busy}>Reset PW</button>
+        <button className="btn btn-sm" onClick={resetPassword} disabled={busy}>
+          Reset PW
+        </button>
         {u.id !== selfId && (
-          <button className="btn btn-sm btn-danger" onClick={del} disabled={busy}>Hapus</button>
+          <button
+            className="btn btn-sm btn-danger"
+            onClick={del}
+            disabled={busy}
+          >
+            Hapus
+          </button>
         )}
       </span>
     </div>
