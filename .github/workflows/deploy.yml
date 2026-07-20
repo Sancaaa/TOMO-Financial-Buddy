@@ -13,6 +13,10 @@ jobs:
       - name: Run Unit Tests
         run: |
           cd $HOME/project/TOMO-Financial-Buddy/backend
+          python3 -m venv venv
+          source venv/bin/activate
+          pip install -r requirements.txt
+          pip install pytest
           pytest
 
       - name: Run Deploy Script
