@@ -29,7 +29,7 @@ export function Login() {
       <div className="box">
         <div className="brand-hero">
           <Tomato size={72} face />
-          <p className="eyebrow">teman catat keuangan · 友</p>
+          <p className="eyebrow">teman keuanganmu · 友</p>
           <h1 className="title">
             <em>Tomo</em> di sini.
           </h1>
