@@ -94,6 +94,17 @@ export interface Trend {
   points: { month: string; expense: string; income: string }[];
 }
 
+export interface Comparison {
+  month: string;
+  prev_month: string;
+  total_expense: string;
+  prev_total_expense: string;
+  pct: number | null;
+  up: boolean;
+  driver_category: string | null;
+  driver_delta: string | null;
+}
+
 export interface CategoryBudget {
   category_id: number;
   name: string;

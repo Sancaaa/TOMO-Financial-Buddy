@@ -8,8 +8,14 @@ from app.api.deps import get_current_user
 from app.core.clock import LOCAL_TZ, now_local
 from app.core.database import get_db
 from app.models import User
-from app.schemas.analytics import CategorySlice, SummaryOut, TrendOut, TrendPoint
-from app.services.summary import monthly_trend, period_summary
+from app.schemas.analytics import (
+    CategorySlice,
+    ComparisonOut,
+    SummaryOut,
+    TrendOut,
+    TrendPoint,
+)
+from app.services.summary import monthly_trend, period_summary, spending_comparison
 
 router = APIRouter(
     prefix="/analytics", tags=["analytics"], dependencies=[Depends(get_current_user)]
@@ -54,12 +60,36 @@ def summary(
 @router.get("/trend", response_model=TrendOut)
 def trend(
     months: int = Query(6, ge=1, le=24),
+    month: str | None = None,
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
 ) -> TrendOut:
-    points = monthly_trend(db, months, now_local(), user.id)
+    # `month` (YYYY-MM) menganchor tren agar berakhir di bulan yang dipilih di UI.
+    _, _, end = _month_range(month) if month else (None, None, now_local())
+    points = monthly_trend(db, months, end, user.id)
     return TrendOut(
         points=[
             TrendPoint(month=p.month, expense=p.expense, income=p.income) for p in points
         ]
+    )
+
+
+@router.get("/comparison", response_model=ComparisonOut)
+def comparison(
+    month: str | None = None,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+) -> ComparisonOut:
+    label, _, _ = _month_range(month)
+    year, mon = (int(x) for x in label.split("-"))
+    c = spending_comparison(db, year, mon, user.id)
+    return ComparisonOut(
+        month=c.month,
+        prev_month=c.prev_month,
+        total_expense=c.total_expense,
+        prev_total_expense=c.prev_total_expense,
+        pct=c.pct,
+        up=c.up,
+        driver_category=c.driver_category,
+        driver_delta=c.driver_delta,
     )

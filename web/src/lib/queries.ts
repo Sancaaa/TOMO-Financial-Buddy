@@ -5,6 +5,7 @@ import type {
   AdminUser,
   BudgetOverview,
   Category,
+  Comparison,
   LinkCode,
   NetWorth,
   OCRResult,
@@ -66,10 +67,18 @@ export function useSummary(month: string) {
   });
 }
 
-export function useTrend(months: number) {
+export function useTrend(months: number, month?: string) {
   return useQuery({
-    queryKey: ["trend", months],
-    queryFn: () => api.get<Trend>(`/analytics/trend?months=${months}`),
+    queryKey: ["trend", months, month ?? "current"],
+    queryFn: () =>
+      api.get<Trend>(`/analytics/trend?months=${months}${month ? `&month=${month}` : ""}`),
+  });
+}
+
+export function useComparison(month: string) {
+  return useQuery({
+    queryKey: ["comparison", month],
+    queryFn: () => api.get<Comparison>(`/analytics/comparison?month=${month}`),
   });
 }
 
@@ -79,6 +88,7 @@ function useInvalidateData() {
     qc.invalidateQueries({ queryKey: ["transactions"] });
     qc.invalidateQueries({ queryKey: ["summary"] });
     qc.invalidateQueries({ queryKey: ["trend"] });
+    qc.invalidateQueries({ queryKey: ["comparison"] });
     qc.invalidateQueries({ queryKey: ["accounts"] });
     qc.invalidateQueries({ queryKey: ["networth"] });
     qc.invalidateQueries({ queryKey: ["budgets"] });

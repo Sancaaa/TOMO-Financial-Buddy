@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { TxList } from "../components/TxList";
 import { TxEditSheet } from "../components/TxEditSheet";
 import { PageHead } from "../components/PageHead";
@@ -9,8 +10,9 @@ import type { Transaction } from "../lib/types";
 
 export function History() {
   const { data: categories } = useCategories();
-  const [month, setMonth] = useState(currentMonth());
-  const [categoryId, setCategoryId] = useState("");
+  const [params] = useSearchParams();
+  const [month, setMonth] = useState(params.get("month") || currentMonth());
+  const [categoryId, setCategoryId] = useState(params.get("category_id") ?? "");
   const [q, setQ] = useState("");
   const [limit, setLimit] = useState(30);
   const [selected, setSelected] = useState<Transaction | null>(null);

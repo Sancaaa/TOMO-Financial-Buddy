@@ -1,18 +1,28 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Bars, Donut } from "../components/Charts";
 import { PageHead } from "../components/PageHead";
 import { Icon } from "../components/Icon";
 import { BudgetBar } from "../components/BudgetBar";
 import { categoryColor } from "../lib/colors";
 import { currentMonth, monthLong, monthShort, rupiah } from "../lib/format";
-import { useBudgets, useSummary, useTrend } from "../lib/queries";
+import { useBudgets, useCategories, useComparison, useSummary, useTrend } from "../lib/queries";
 
 export function Analytics() {
   const [month, setMonth] = useState(currentMonth());
   const summary = useSummary(month);
-  const trend = useTrend(6);
+  const trend = useTrend(6, month);
   const budgets = useBudgets(month);
+  const comparison = useComparison(month);
+  const { data: categories } = useCategories();
+  const navigate = useNavigate();
   const budgeted = (budgets.data?.categories ?? []).filter((c) => Number(c.budget) > 0);
+
+  const catMap = new Map((categories ?? []).map((c) => [c.name, c.id]));
+  function drilldown(name: string) {
+    const id = catMap.get(name);
+    navigate(`/riwayat?month=${month}${id ? `&category_id=${id}` : ""}`);
+  }
 
   const slices = (summary.data?.per_category ?? []).map((c) => ({
     name: c.name,
@@ -26,7 +36,7 @@ export function Analytics() {
     income: Number(p.income),
   }));
 
-  const comparison = buildComparison(trend.data?.points ?? [], month);
+  const cmp = comparison.data;
 
   return (
     <>
@@ -60,7 +70,13 @@ export function Analytics() {
                 <Donut data={slices} centerLabel={rupiah(summary.data?.total_expense ?? 0).replace("Rp", "")} size={160} />
                 <div className="legend" style={{ flex: 1, minWidth: 150 }}>
                   {slices.map((s) => (
-                    <div className="li" key={s.name}>
+                    <div
+                      className="li"
+                      key={s.name}
+                      role="button"
+                      style={{ cursor: "pointer" }}
+                      onClick={() => drilldown(s.name)}
+                    >
                       <span className="sw" style={{ background: s.color }} />
                       <span className="nm">{s.name}</span>
                       <span className="vl tabular">{rupiah(s.value)}</span>
@@ -71,10 +87,13 @@ export function Analytics() {
             )}
           </div>
 
-          {comparison && (
+          {cmp && cmp.pct != null && (
             <div className="card pad-sm">
-              <span className="ico-txt" style={{ color: comparison.up ? "var(--danger)" : "var(--leaf-dark)" }}>
-                <Icon name={comparison.up ? "arrow-up" : "arrow-down"} size={16} /> {comparison.text}
+              <span className="ico-txt" style={{ color: cmp.up ? "var(--danger)" : "var(--leaf-dark)" }}>
+                <Icon name={cmp.up ? "arrow-up" : "arrow-down"} size={16} />
+                {" "}
+                {Math.abs(cmp.pct)}% {cmp.up ? "lebih boros" : "lebih hemat"} dari bulan lalu
+                {cmp.driver_category ? `, terutama di ${cmp.driver_category}` : ""}.
               </span>
             </div>
           )}
@@ -93,6 +112,8 @@ export function Analytics() {
                     budget={Number(c.budget)}
                     pct={c.pct}
                     status={c.status}
+                    hint={c.exhaust_day ? `dengan laju ini, habis ~tgl ${c.exhaust_day}` : undefined}
+                    onClick={() => navigate(`/riwayat?month=${month}&category_id=${c.category_id}`)}
                   />
                 ))}
               </div>
@@ -111,22 +132,4 @@ export function Analytics() {
       </div>
     </>
   );
-}
-
-function buildComparison(
-  points: { month: string; expense: string }[],
-  month: string,
-): { up: boolean; text: string } | null {
-  const idx = points.findIndex((p) => p.month === month);
-  if (idx <= 0) return null;
-  const cur = Number(points[idx].expense);
-  const prev = Number(points[idx - 1].expense);
-  if (prev === 0) return null;
-  const pct = Math.round(((cur - prev) / prev) * 100);
-  if (pct === 0) return { up: false, text: "Pengeluaran sama dengan bulan lalu." };
-  const up = pct > 0;
-  return {
-    up,
-    text: `${Math.abs(pct)}% ${up ? "lebih boros" : "lebih hemat"} dari bulan lalu.`,
-  };
 }

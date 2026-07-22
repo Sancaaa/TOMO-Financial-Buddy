@@ -24,3 +24,14 @@ class TrendPoint(BaseModel):
 
 class TrendOut(BaseModel):
     points: list[TrendPoint]
+
+
+class ComparisonOut(BaseModel):
+    month: str
+    prev_month: str
+    total_expense: Decimal
+    prev_total_expense: Decimal
+    pct: int | None
+    up: bool
+    driver_category: str | None
+    driver_delta: Decimal | None

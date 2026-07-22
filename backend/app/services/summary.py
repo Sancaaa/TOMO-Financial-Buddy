@@ -61,6 +61,60 @@ def period_summary(
 
 
 @dataclass
+class SpendingComparison:
+    month: str
+    prev_month: str
+    total_expense: Decimal
+    prev_total_expense: Decimal
+    pct: int | None  # None bila bulan lalu Rp0 (tak bisa dibandingkan)
+    up: bool
+    driver_category: str | None  # kategori pendorong perubahan
+    driver_delta: Decimal | None  # selisih kategori itu (bertanda)
+
+
+def _prev_ym(year: int, mon: int) -> tuple[int, int]:
+    return (year, mon - 1) if mon > 1 else (year - 1, 12)
+
+
+def spending_comparison(db: Session, year: int, mon: int, user_id: int) -> SpendingComparison:
+    """Bandingkan pengeluaran bulan (year, mon) vs bulan sebelumnya, plus kategori
+    pendorong perubahan (pergerakan terbesar searah dengan perubahan total)."""
+    p_year, p_mon = _prev_ym(year, mon)
+    cur = period_summary(db, *_month_bounds(year, mon), user_id)
+    prev = period_summary(db, *_month_bounds(p_year, p_mon), user_id)
+
+    cur_map = {c.name: c.total for c in cur.per_category}
+    prev_map = {c.name: c.total for c in prev.per_category}
+    up = cur.total_expense >= prev.total_expense
+    deltas = {
+        n: cur_map.get(n, Decimal(0)) - prev_map.get(n, Decimal(0))
+        for n in set(cur_map) | set(prev_map)
+    }
+    candidates = [(n, d) for n, d in deltas.items() if (d > 0 if up else d < 0)]
+    driver_category, driver_delta = (
+        max(candidates, key=lambda kv: abs(kv[1])) if candidates else (None, None)
+    )
+
+    pct = None
+    if prev.total_expense > 0:
+        pct = int(
+            ((cur.total_expense - prev.total_expense) / prev.total_expense * 100)
+            .to_integral_value()
+        )
+
+    return SpendingComparison(
+        month=f"{year:04d}-{mon:02d}",
+        prev_month=f"{p_year:04d}-{p_mon:02d}",
+        total_expense=cur.total_expense,
+        prev_total_expense=prev.total_expense,
+        pct=pct,
+        up=up,
+        driver_category=driver_category,
+        driver_delta=driver_delta,
+    )
+
+
+@dataclass
 class MonthPoint:
     month: str  # YYYY-MM
     expense: Decimal

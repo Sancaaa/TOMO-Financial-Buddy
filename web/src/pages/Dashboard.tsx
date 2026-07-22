@@ -9,7 +9,7 @@ import { Icon } from "../components/Icon";
 import { BudgetBar } from "../components/BudgetBar";
 import { categoryColor } from "../lib/colors";
 import { currentMonth, monthLong, rupiah } from "../lib/format";
-import { useBudgetAlerts, useBudgets, useGoals, useNetWorth, useQuickAdd, useSummary, useTransactions } from "../lib/queries";
+import { useBudgetAlerts, useBudgets, useCategories, useGoals, useNetWorth, useQuickAdd, useSummary, useTransactions } from "../lib/queries";
 import { useAuth } from "../lib/auth";
 import type { Transaction } from "../lib/types";
 
@@ -22,7 +22,13 @@ export function Dashboard() {
   const goals = useGoals();
   const netWorth = useNetWorth();
   const quick = useQuickAdd();
+  const { data: categories } = useCategories();
   const navigate = useNavigate();
+  const catMap = new Map((categories ?? []).map((c) => [c.name, c.id]));
+  function drilldown(name: string) {
+    const id = catMap.get(name);
+    navigate(`/riwayat?month=${month}${id ? `&category_id=${id}` : ""}`);
+  }
   const { logout } = useAuth();
   const [text, setText] = useState("");
   const [selected, setSelected] = useState<Transaction | null>(null);
@@ -182,8 +188,14 @@ export function Dashboard() {
               <div style={{ display: "flex", gap: 16, alignItems: "center", flexWrap: "wrap" }}>
                 <Donut data={slices} centerLabel={String(summary.data?.count ?? 0) + " tx"} size={150} />
                 <div className="legend" style={{ flex: 1, minWidth: 150 }}>
-                  {slices.slice(0, 6).map((s) => (
-                    <div className="li" key={s.name}>
+                  {slices.map((s) => (
+                    <div
+                      className="li"
+                      key={s.name}
+                      role="button"
+                      style={{ cursor: "pointer" }}
+                      onClick={() => drilldown(s.name)}
+                    >
                       <span className="sw" style={{ background: s.color }} />
                       <span className="nm">{s.name}</span>
                       <span className="vl tabular">{rupiah(s.value)}</span>

@@ -30,6 +30,7 @@ export function Donut({
         {total > 0 &&
           data.map((d, i) => {
             const len = (d.value / total) * c;
+            const pct = Math.round((d.value / total) * 100);
             const el = (
               <circle
                 key={i}
@@ -41,7 +42,9 @@ export function Donut({
                 strokeWidth={thickness}
                 strokeDasharray={`${len} ${c - len}`}
                 strokeDashoffset={-acc}
-              />
+              >
+                <title>{`${d.name}: ${rupiahShort(d.value)} · ${pct}%`}</title>
+              </circle>
             );
             acc += len;
             return el;
@@ -87,8 +90,12 @@ export function Bars({ data }: { data: TrendBar[] }) {
         const ih = (d.income / max) * chartH;
         return (
           <g key={i}>
-            <rect x={x - barW - 1} y={chartH - eh} width={barW} height={eh} rx={3} fill="var(--tomato)" />
-            <rect x={x + 1} y={chartH - ih} width={barW} height={ih} rx={3} fill="var(--leaf)" />
+            <rect x={x - barW - 1} y={chartH - eh} width={barW} height={eh} rx={3} fill="var(--tomato)">
+              <title>{`${d.label} · keluar ${rupiahShort(d.expense)}`}</title>
+            </rect>
+            <rect x={x + 1} y={chartH - ih} width={barW} height={ih} rx={3} fill="var(--leaf)">
+              <title>{`${d.label} · masuk ${rupiahShort(d.income)}`}</title>
+            </rect>
             <text x={x} y={H - 6} textAnchor="middle" fill="var(--ink-muted)" style={{ fontSize: 10 }}>
               {d.label}
             </text>
