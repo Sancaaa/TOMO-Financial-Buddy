@@ -313,6 +313,22 @@ a { color: var(--tomato); text-decoration: none; }
 .tx .amt { font-variant-numeric: tabular-nums; font-weight: 500; white-space: nowrap; }
 .tx .amt.inc { color: var(--leaf-dark); }
 
+/* --- swipe-to-reveal quick actions on tx rows --- */
+.swipe { position: relative; overflow: hidden; }
+.swipe:last-child .tx { border-bottom: none; }
+.swipe-actions { position: absolute; inset: 0 0 0 auto; display: flex; }
+.swipe-actions button {
+  border: none; width: 76px; color: #fff; font-size: 13px; font-weight: 600; cursor: pointer;
+}
+.swipe-actions .act-edit { background: var(--ink-soft); }
+.swipe-actions .act-del { background: var(--tomato-deep); }
+.swipe-fg {
+  position: relative; z-index: 1; background: var(--paper);
+  transition: transform 0.18s ease; touch-action: pan-y;
+}
+.swipe-fg.dragging { transition: none; }
+@media (prefers-reduced-motion: reduce) { .swipe-fg { transition: none; } }
+
 /* --- chips / segmented --- */
 .chips { display: flex; gap: 8px; flex-wrap: wrap; }
 .chip {
