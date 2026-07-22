@@ -190,6 +190,20 @@ a { color: var(--tomato); text-decoration: none; }
 }
 .navitem.add .badge:active { transform: scale(0.94); }
 
+/* --- burger menu (mobile) --- */
+.menu-list { display: flex; flex-direction: column; gap: 4px; margin-top: 4px; }
+.menu-row {
+  display: flex; align-items: center; gap: 12px;
+  padding: 14px 12px; border-radius: 12px;
+  background: none; border: none; width: 100%; text-align: left;
+  color: var(--ink); font-size: 16px; cursor: pointer;
+}
+.menu-row .ic { display: inline-flex; color: var(--ink-muted); }
+.menu-row:hover { background: var(--cream); }
+.menu-row.active { background: var(--tomato-tint); color: var(--tomato-deep); }
+.menu-row.active .ic { color: var(--tomato-deep); }
+.menu-row.divide { margin-top: 4px; border-top: 1px solid var(--border); border-radius: 0 0 12px 12px; }
+
 /* --- cards --- */
 .card {
   background: var(--paper);

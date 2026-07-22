@@ -7,7 +7,7 @@ import type { ReactNode } from "react";
  */
 export type IconName =
   // nav
-  | "home" | "list" | "plus" | "chart" | "settings"
+  | "home" | "list" | "plus" | "chart" | "settings" | "menu" | "logout"
   // kategori pengeluaran
   | "bowl" | "coffee" | "car" | "wifi" | "school" | "device-tv" | "heartbeat" | "dots"
   // kategori pemasukan
@@ -20,6 +20,8 @@ const P: Record<IconName, ReactNode> = {
   home: <><path d="M4 11.5 12 4l8 7.5" /><path d="M6 10v9h12v-9" /></>,
   list: <><path d="M8 6h12M8 12h12M8 18h12" /><path d="M4 6h.01M4 12h.01M4 18h.01" /></>,
   plus: <path d="M12 5v14M5 12h14" />,
+  menu: <path d="M4 7h16M4 12h16M4 17h16" />,
+  logout: <><path d="M14 7V5a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2v-2" /><path d="M10 12h10M17 9l3 3-3 3" /></>,
   chart: <><path d="M4 20h16" /><path d="M7 20v-6M12 20V5M17 20v-9" /></>,
   settings: (
     <>

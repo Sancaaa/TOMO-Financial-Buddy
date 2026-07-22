@@ -1,23 +1,38 @@
-import { NavLink, Outlet } from "react-router-dom";
+import { useState } from "react";
+import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { Tomato } from "./Tomato";
 import { Icon, type IconName } from "./Icon";
+import { Sheet } from "./Sheet";
 import { useAuth } from "../lib/auth";
 
 type Tab = { to: string; label: string; icon: IconName; end: boolean; add?: boolean };
 
-const TABS: Tab[] = [
+// Bottom-nav utama (mobile): tepat 4 + burger = 5 tombol, "Tambah" di tengah.
+const PRIMARY: Tab[] = [
   { to: "/", label: "Beranda", icon: "home", end: true },
   { to: "/riwayat", label: "Riwayat", icon: "list", end: false },
   { to: "/tambah", label: "Tambah", icon: "plus", add: true, end: false },
   { to: "/analitik", label: "Analitik", icon: "chart", end: false },
-  { to: "/kelola", label: "Kelola", icon: "settings", end: false },
 ];
 
+// Item sekunder — di desktop tampil di sidebar, di mobile masuk burger.
+const MENU: Tab[] = [{ to: "/kelola", label: "Kelola", icon: "settings", end: false }];
 const ADMIN_TAB: Tab = { to: "/admin", label: "Admin", icon: "award", end: false };
 
 export function Layout() {
   const { logout, user } = useAuth();
-  const sideTabs = user?.is_admin ? [...TABS, ADMIN_TAB] : TABS;
+  const location = useLocation();
+  const navigate = useNavigate();
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  const menuTabs = user?.is_admin ? [...MENU, ADMIN_TAB] : MENU;
+  const sideTabs = [...PRIMARY, ...menuTabs]; // sidebar desktop: semua
+  const menuActive = menuTabs.some((t) => location.pathname.startsWith(t.to));
+
+  function goMenu(to: string) {
+    setMenuOpen(false);
+    navigate(to);
+  }
 
   return (
     <>
@@ -56,7 +71,7 @@ export function Layout() {
       </div>
 
       <nav className="bottomnav">
-        {sideTabs.map((t) => (
+        {PRIMARY.map((t) => (
           <NavLink
             key={t.to}
             to={t.to}
@@ -75,7 +90,43 @@ export function Layout() {
             )}
           </NavLink>
         ))}
+        <button
+          type="button"
+          className={"navitem" + (menuActive ? " active" : "")}
+          onClick={() => setMenuOpen(true)}
+          aria-label="Menu lainnya"
+        >
+          <span className="ic"><Icon name="menu" size={22} /></span>
+          <span>Menu</span>
+        </button>
       </nav>
+
+      {menuOpen && (
+        <Sheet title="Menu" onClose={() => setMenuOpen(false)}>
+          <div className="menu-list">
+            {menuTabs.map((t) => (
+              <button
+                key={t.to}
+                className={"menu-row" + (location.pathname.startsWith(t.to) ? " active" : "")}
+                onClick={() => goMenu(t.to)}
+              >
+                <span className="ic"><Icon name={t.icon} size={20} /></span>
+                <span>{t.label}</span>
+              </button>
+            ))}
+            <button
+              className="menu-row divide"
+              onClick={() => {
+                setMenuOpen(false);
+                logout();
+              }}
+            >
+              <span className="ic"><Icon name="logout" size={20} /></span>
+              <span>Keluar</span>
+            </button>
+          </div>
+        </Sheet>
+      )}
     </>
   );
 }
