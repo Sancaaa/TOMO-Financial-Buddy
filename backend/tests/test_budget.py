@@ -266,6 +266,15 @@ def test_cycle_reset_to_calendar(auth_client):
     assert auth_client.get("/budgets/cycle").json()["cycle_start_day"] == 1
 
 
+def test_due_period_review():
+    # Review dipicu di awal siklus, mereview periode yang baru berakhir.
+    from app.scheduler import due_period_review
+    assert due_period_review(date(2026, 7, 5), 5) == "2026-06"  # siklus custom
+    assert due_period_review(date(2026, 7, 10), 5) is None      # bukan awal siklus
+    assert due_period_review(date(2026, 7, 1), 1) == "2026-06"  # default kalender
+    assert due_period_review(date(2026, 1, 1), 1) == "2025-12"  # lintas tahun
+
+
 def test_alerts_endpoint_readonly(auth_client):
     # T1.3: banner web memakai status saat ini, tanpa dedup (beda dari job harian).
     makan = _makan_id(auth_client)

@@ -64,6 +64,24 @@ export function Dashboard() {
         right={<button className="btn btn-sm" onClick={logout}>Keluar</button>}
       />
 
+      {summary.data && netWorth.data && summary.data.count === 0 &&
+        Number(netWorth.data.total) === 0 && budgets.data?.total_budget == null && (
+          <div className="card pad-sm stack" style={{ gap: 8 }}>
+            <span className="ico-txt"><Tomato size={22} face /> <strong>Selamat datang di TOMO!</strong></span>
+            <p className="hint" style={{ margin: 0 }}>
+              Biar Tomo bisa hitung saldo & sisa aman: atur saldo awal akunmu dan budget
+              bulanan di Kelola. Atau langsung catat pengeluaran pertama di bawah 👇
+            </p>
+            <button
+              className="btn btn-sm btn-primary"
+              style={{ alignSelf: "flex-start" }}
+              onClick={() => navigate("/kelola")}
+            >
+              Atur sekarang
+            </button>
+          </div>
+        )}
+
       <form className="card tilt" onSubmit={submitQuick}>
         <p className="eyebrow-sm" style={{ marginBottom: 8 }}>catat cepat</p>
         <div className="row" style={{ gap: 8, alignItems: "flex-end" }}>

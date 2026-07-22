@@ -7,7 +7,7 @@ bulan sebelumnya.
 """
 
 import logging
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 
 from apscheduler.schedulers.background import BackgroundScheduler
 from sqlalchemy import select
@@ -18,6 +18,7 @@ from app.core.config import settings
 from app.core.database import SessionLocal
 from app.models import User
 from app.services.alerts import check_budget_alerts
+from app.services.budget import cycle_start_day
 from app.services.digest import (
     build_daily_digest,
     build_period_review,
@@ -28,8 +29,16 @@ from app.services.recurring import run_due_recurring
 log = logging.getLogger("scheduler")
 
 
-def _prev_period(now: datetime) -> str:
-    year, mon = now.year, now.month - 1
+def due_period_review(today: date, cycle_day: int) -> str | None:
+    """Label periode yang baru berakhir bila hari ini adalah awal siklus baru.
+
+    Siklus dilabeli bulan tempat ia mulai; yang berakhir kemarin dimulai tepat
+    sebulan lalu di tanggal `cycle_day`. None bila hari ini bukan awal siklus.
+    Untuk cycle_day=1 ini identik dengan "review tiap tanggal 1".
+    """
+    if today.day != cycle_day:
+        return None
+    year, mon = today.year, today.month - 1
     if mon == 0:
         mon = 12
         year -= 1
@@ -76,9 +85,10 @@ def daily_job() -> None:
                     outbox.append(build_weekly_insight(db, now, user.id))
                 except Exception:
                     log.exception("insight mingguan gagal untuk user %s", user.id)
-            if now.day == 1:
+            review_period = due_period_review(now.date(), cycle_start_day(db, user.id))
+            if review_period:
                 try:
-                    outbox.append(build_period_review(db, _prev_period(now), user.id))
+                    outbox.append(build_period_review(db, review_period, user.id))
                 except Exception:
                     log.exception("review periode gagal untuk user %s", user.id)
             _send(user.telegram_chat_id, outbox)

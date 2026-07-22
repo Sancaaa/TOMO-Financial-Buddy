@@ -6,7 +6,7 @@ import { BudgetBar } from "../components/BudgetBar";
 import { Tomato } from "../components/Tomato";
 import { Icon, categoryIcon } from "../components/Icon";
 import { categoryColor } from "../lib/colors";
-import { rupiah } from "../lib/format";
+import { currentMonth, monthLong, rupiah } from "../lib/format";
 import { useAuth } from "../lib/auth";
 import { useLinkCode, useUnlinkTelegram } from "../lib/queries";
 import {
@@ -292,13 +292,19 @@ function AccountSheet({ acc, onClose }: { acc: Partial<Account>; onClose: () => 
 }
 
 function BudgetTotalCard() {
+  const month = currentMonth();
   const { data } = useBudgets();
   const set = useSetBudget();
   const [amount, setAmount] = useState("");
+  const [scope, setScope] = useState<"default" | "month">("default");
   const current = data?.total_budget_explicit ? data.total_budget : null;
 
   async function save() {
-    await set.mutateAsync({ category_id: null, amount: Number(amount) });
+    await set.mutateAsync({
+      category_id: null,
+      amount: Number(amount),
+      period: scope === "month" ? month : null,
+    });
     setAmount("");
   }
 
@@ -308,6 +314,13 @@ function BudgetTotalCard() {
       <p className="hint">
         Dipakai menghitung "sisa aman/hari".{current ? ` Sekarang: ${rupiah(current)}.` : ""}
       </p>
+      <div className="field">
+        <label>Berlaku</label>
+        <select value={scope} onChange={(e) => setScope(e.target.value as "default" | "month")}>
+          <option value="default">Seterusnya (tiap bulan)</option>
+          <option value="month">Hanya {monthLong(month)}</option>
+        </select>
+      </div>
       <div className="row" style={{ gap: 8, alignItems: "flex-end" }}>
         <div className="field" style={{ flex: 3 }}>
           <input
@@ -321,6 +334,9 @@ function BudgetTotalCard() {
           Simpan
         </button>
       </div>
+      {scope === "month" && (
+        <span className="hint">Override khusus bulan ini; default bulanan tidak berubah.</span>
+      )}
     </div>
   );
 }
