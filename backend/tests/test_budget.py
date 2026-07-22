@@ -1,9 +1,12 @@
+from calendar import monthrange
+from datetime import date
 from decimal import Decimal
 
+import pytest
 from sqlalchemy import select
 
 from app.core.clock import now_local
-from app.models import Category, Transaction
+from app.models import Category, RecurringTx, Transaction
 from app.services.alerts import check_budget_alerts
 
 
@@ -147,13 +150,84 @@ def test_budget_period_override(auth_client, db):
     makan = _makan_id(auth_client)
     # default budget 500k
     auth_client.put("/budgets", json={"category_id": makan, "amount": 500000})
-    
+
     # override for current period 700k
     from app.services.budget import current_period
     period = current_period()
     auth_client.put("/budgets", json={"category_id": makan, "amount": 700000, "period": period})
-    
+
     ov = auth_client.get("/budgets").json()
     cat_ov = next(c for c in ov["categories"] if c["category_id"] == makan)
-    
+
     assert float(cat_ov["budget"]) == 700000
+
+
+def _future_day_this_month() -> date:
+    """Tanggal di bulan berjalan yang >= hari ini (untuk next_run recurring)."""
+    now = now_local()
+    last = monthrange(now.year, now.month)[1]
+    return date(now.year, now.month, min(now.day + 2, last))
+
+
+def test_safe_to_spend_reserves_pending_recurring(auth_client, db, uid):
+    # T1.1: tagihan rutin yang belum jatuh tempo disisihkan dari "sisa aman".
+    auth_client.put("/budgets", json={"category_id": None, "amount": 2000000})
+    auth_client.post("/transactions", json={"amount": 200000, "type": "expense"})
+
+    db.add(RecurringTx(
+        user_id=uid, amount=Decimal(800000), type="expense",
+        day_of_month=_future_day_this_month().day, active=True,
+        next_run=_future_day_this_month(),
+    ))
+    db.commit()
+
+    ov = auth_client.get("/budgets").json()
+    assert float(ov["reserved_recurring"]) == 800000
+    # sisa aman/hari = (2jt − 200rb belanja − 800rb rutin) ÷ hari tersisa
+    expected = (2000000 - 200000 - 800000) / ov["days_left"]
+    assert float(ov["safe_to_spend"]) == pytest.approx(expected)
+
+
+def test_overview_exposes_unbudgeted_spent(auth_client):
+    # T1.1/B2: belanja di kategori tanpa budget tidak boleh jadi titik buta.
+    makan, hiburan = _cat_id(auth_client, "Makan"), _cat_id(auth_client, "Hiburan")
+    auth_client.put("/budgets", json={"category_id": makan, "amount": 500000})
+    auth_client.post("/transactions", json={"amount": 200000, "type": "expense", "category_id": makan})
+    auth_client.post("/transactions", json={"amount": 300000, "type": "expense", "category_id": hiburan})
+
+    ov = auth_client.get("/budgets").json()
+    assert float(ov["unbudgeted_spent"]) == 300000
+
+
+def test_projection_without_budget(auth_client):
+    # T1.2/A5: rata-rata harian & proyeksi akhir bulan jalan walau tak ada budget.
+    auth_client.post("/transactions", json={"amount": 300000, "type": "expense"})
+    ov = auth_client.get("/budgets").json()
+    assert ov["total_budget"] is None
+    day, dim = ov["day_today"], ov["days_in_month"]
+    assert float(ov["avg_daily_spend"]) == pytest.approx(300000 / day)
+    assert float(ov["projected_month_total"]) == pytest.approx(300000 / day * dim)
+
+
+def test_category_exhaust_day(auth_client):
+    # T1.2/B3: proyeksi tanggal habis per kategori.
+    makan = _makan_id(auth_client)
+    auth_client.put("/budgets", json={"category_id": makan, "amount": 300000})
+    auth_client.post("/transactions", json={"amount": 150000, "type": "expense", "category_id": makan})
+
+    ov = auth_client.get("/budgets").json()
+    cat = next(c for c in ov["categories"] if c["category_id"] == makan)
+    assert cat["exhaust_day"] is not None
+    assert ov["day_today"] <= cat["exhaust_day"] <= ov["days_in_month"]
+
+
+def test_alerts_endpoint_readonly(auth_client):
+    # T1.3: banner web memakai status saat ini, tanpa dedup (beda dari job harian).
+    makan = _makan_id(auth_client)
+    auth_client.put("/budgets", json={"category_id": makan, "amount": 100000})
+    auth_client.post("/transactions", json={"amount": 85000, "type": "expense", "category_id": makan})
+
+    first = auth_client.get("/budgets/alerts").json()["alerts"]
+    assert any("80" in m or "sudah" in m for m in first)
+    # panggil lagi → tetap tampil (read-only)
+    assert auth_client.get("/budgets/alerts").json()["alerts"] == first

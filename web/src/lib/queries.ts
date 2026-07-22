@@ -82,6 +82,7 @@ function useInvalidateData() {
     qc.invalidateQueries({ queryKey: ["accounts"] });
     qc.invalidateQueries({ queryKey: ["networth"] });
     qc.invalidateQueries({ queryKey: ["budgets"] });
+    qc.invalidateQueries({ queryKey: ["budget-alerts"] });
   };
 }
 
@@ -89,6 +90,13 @@ export function useBudgets(month?: string) {
   return useQuery({
     queryKey: ["budgets", month ?? "current"],
     queryFn: () => api.get<BudgetOverview>(`/budgets${month ? `?period=${month}` : ""}`),
+  });
+}
+
+export function useBudgetAlerts() {
+  return useQuery({
+    queryKey: ["budget-alerts"],
+    queryFn: () => api.get<{ alerts: string[] }>("/budgets/alerts"),
   });
 }
 

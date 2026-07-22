@@ -10,6 +10,7 @@ class CategoryBudgetOut(BaseModel):
     remaining: Decimal
     pct: int
     status: str
+    exhaust_day: int | None = None
 
 
 class BudgetOverviewOut(BaseModel):
@@ -23,6 +24,10 @@ class BudgetOverviewOut(BaseModel):
     day_today: int
     days_in_month: int
     exhaust_day: int | None
+    unbudgeted_spent: Decimal
+    reserved_recurring: Decimal
+    avg_daily_spend: Decimal | None
+    projected_month_total: Decimal | None
     categories: list[CategoryBudgetOut]
 
 
@@ -33,6 +38,12 @@ class SafeToSpendOut(BaseModel):
     safe_to_spend: Decimal | None
     days_left: int
     exhaust_day: int | None
+    reserved_recurring: Decimal
+    projected_month_total: Decimal | None
+
+
+class AlertsOut(BaseModel):
+    alerts: list[str]
 
 
 class BudgetSet(BaseModel):

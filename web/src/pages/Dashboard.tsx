@@ -9,7 +9,7 @@ import { Icon } from "../components/Icon";
 import { BudgetBar } from "../components/BudgetBar";
 import { categoryColor } from "../lib/colors";
 import { currentMonth, monthLong, rupiah } from "../lib/format";
-import { useBudgets, useGoals, useNetWorth, useQuickAdd, useSummary, useTransactions } from "../lib/queries";
+import { useBudgetAlerts, useBudgets, useGoals, useNetWorth, useQuickAdd, useSummary, useTransactions } from "../lib/queries";
 import { useAuth } from "../lib/auth";
 import type { Transaction } from "../lib/types";
 
@@ -18,6 +18,7 @@ export function Dashboard() {
   const summary = useSummary(month);
   const recent = useTransactions({ month, limit: 8 });
   const budgets = useBudgets();
+  const alerts = useBudgetAlerts();
   const goals = useGoals();
   const netWorth = useNetWorth();
   const quick = useQuickAdd();
@@ -75,6 +76,16 @@ export function Dashboard() {
         )}
       </form>
 
+      {(alerts.data?.alerts ?? []).length > 0 && (
+        <div className="card pad-sm stack" style={{ gap: 6, borderColor: "var(--danger)" }}>
+          {(alerts.data?.alerts ?? []).map((m, i) => (
+            <div key={i} className="ico-txt" style={{ color: "var(--danger)" }}>
+              <Icon name="alert" size={16} /> {m}
+            </div>
+          ))}
+        </div>
+      )}
+
       <div className="cols">
         <div className="col">
           {netWorth.data && (
@@ -97,9 +108,12 @@ export function Dashboard() {
             </div>
           )}
 
-          {budgets.data?.total_budget != null && (() => {
-            const spent = Number(budgets.data.total_spent);
-            const total = Number(budgets.data.total_budget);
+          {budgets.data?.total_budget != null ? (() => {
+            const b = budgets.data;
+            const spent = Number(b.total_spent);
+            const total = Number(b.total_budget);
+            const reserved = Number(b.reserved_recurring);
+            const unbudgeted = Number(b.unbudgeted_spent);
             const pct = total > 0 ? Math.round((spent / total) * 100) : 0;
             const status = pct >= 100 ? "over" : pct >= 70 ? "warn" : "ok";
             return (
@@ -107,19 +121,44 @@ export function Dashboard() {
                 <div className="section-title">Sisa aman dibelanjakan</div>
                 <div className="safe">
                   <span className="big">
-                    {budgets.data.safe_to_spend != null ? rupiah(budgets.data.safe_to_spend) + "/hari" : "—"}
+                    {b.safe_to_spend != null ? rupiah(b.safe_to_spend) + "/hari" : "—"}
                   </span>
                   <span className="hint">
-                    {budgets.data.days_left} hari lagi
-                    {budgets.data.exhaust_day ? ` · dengan laju ini, budget habis ~tgl ${budgets.data.exhaust_day}` : ""}
+                    {b.days_left} hari lagi
+                    {b.exhaust_day ? ` · dengan laju ini, budget habis ~tgl ${b.exhaust_day}` : ""}
                   </span>
                 </div>
+                {reserved > 0 && (
+                  <p className="hint" style={{ marginTop: 6 }}>
+                    Sudah disisihkan {rupiah(reserved)} untuk tagihan rutin yang belum jatuh tempo.
+                  </p>
+                )}
                 <div style={{ marginTop: 12 }}>
                   <BudgetBar label="Total bulan ini" spent={spent} budget={total} pct={pct} status={status} />
                 </div>
+                {!b.total_budget_explicit && unbudgeted > 0 && (
+                  <p className="hint" style={{ marginTop: 6 }}>
+                    +{rupiah(unbudgeted)} belanja di kategori tanpa budget (di luar hitungan di atas).
+                  </p>
+                )}
               </div>
             );
-          })()}
+          })() : (
+            budgets.data?.projected_month_total != null && (
+              <div className="card">
+                <div className="section-title">Proyeksi bulan ini</div>
+                <div className="safe">
+                  <span className="big tabular">{rupiah(budgets.data.projected_month_total)}</span>
+                  <span className="hint">
+                    rata-rata {rupiah(budgets.data.avg_daily_spend)}/hari · perkiraan total akhir bulan
+                  </span>
+                </div>
+                <p className="hint" style={{ marginTop: 8 }}>
+                  Set budget total di <strong>Kelola</strong> untuk lihat sisa aman/hari.
+                </p>
+              </div>
+            )
+          )}
 
           <div className="metrics">
             <div className="metric">

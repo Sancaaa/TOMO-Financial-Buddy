@@ -102,6 +102,7 @@ export interface CategoryBudget {
   remaining: string;
   pct: number;
   status: "ok" | "warn" | "over";
+  exhaust_day: number | null;
 }
 
 export interface BudgetOverview {
@@ -115,6 +116,10 @@ export interface BudgetOverview {
   day_today: number;
   days_in_month: number;
   exhaust_day: number | null;
+  unbudgeted_spent: string;
+  reserved_recurring: string;
+  avg_daily_spend: string | null;
+  projected_month_total: string | null;
   categories: CategoryBudget[];
 }
 

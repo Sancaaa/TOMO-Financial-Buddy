@@ -8,14 +8,14 @@ Sumber budget:
 
 from calendar import monthrange
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import date, datetime
 from decimal import Decimal
 
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.core.clock import LOCAL_TZ, now_local
-from app.models import Budget, Category, Transaction
+from app.models import Budget, Category, RecurringTx, Transaction
 
 
 @dataclass
@@ -27,6 +27,7 @@ class CategoryBudget:
     remaining: Decimal
     pct: int
     status: str  # ok | warn | over
+    exhaust_day: int | None = None  # perkiraan tanggal budget kategori ini habis
 
 
 @dataclass
@@ -41,6 +42,10 @@ class BudgetOverview:
     day_today: int
     days_in_month: int
     exhaust_day: int | None
+    unbudgeted_spent: Decimal = Decimal(0)  # belanja di kategori tanpa budget
+    reserved_recurring: Decimal = Decimal(0)  # tagihan rutin belum jatuh tempo bln ini
+    avg_daily_spend: Decimal | None = None  # rata-rata belanja/hari (periode berjalan)
+    projected_month_total: Decimal | None = None  # proyeksi total akhir bulan
     categories: list[CategoryBudget] = field(default_factory=list)
 
 
@@ -92,6 +97,43 @@ def _status(pct: int) -> str:
     if pct >= 70:
         return "warn"
     return "ok"
+
+
+def _exhaust_day(
+    budget: Decimal | None,
+    spent: Decimal,
+    day_today: int,
+    days_in_month: int,
+) -> int | None:
+    """Perkiraan tanggal budget habis dengan laju belanja saat ini. None bila tak relevan."""
+    if budget is None or budget <= 0 or spent <= 0 or day_today <= 0:
+        return None
+    avg = spent / day_today
+    if avg <= 0:
+        return None
+    days_to_go = (budget - spent) / avg
+    proj = day_today + int(days_to_go.to_integral_value())
+    return min(max(proj, day_today), days_in_month)
+
+
+def _pending_recurring_expense(
+    db: Session, user_id: int, today: date, period_end: date
+) -> Decimal:
+    """Total recurring pengeluaran yang belum jatuh tempo di sisa periode ini.
+
+    Dipakai menyisihkan tagihan rutin (kos, langganan) dari "sisa aman", supaya
+    safe-to-spend tidak menjanjikan uang yang sebenarnya sudah teralokasi.
+    """
+    rows = db.scalars(
+        select(RecurringTx).where(
+            RecurringTx.user_id == user_id,
+            RecurringTx.active.is_(True),
+            RecurringTx.type == "expense",
+            RecurringTx.next_run >= today,
+            RecurringTx.next_run <= period_end,
+        )
+    ).all()
+    return sum((r.amount for r in rows), Decimal(0))
 
 
 def effective_budget(
@@ -166,6 +208,9 @@ def overview(db: Session, user_id: int, period: str | None = None) -> BudgetOver
             sum_budgeted_spent += spent
         b = budget or Decimal(0)
         pct = int((spent / b * 100).to_integral_value()) if b > 0 else 0
+        cat_exhaust = (
+            _exhaust_day(b, spent, day_today, days_in_month) if is_current else None
+        )
         categories.append(
             CategoryBudget(
                 category_id=cat.id,
@@ -175,6 +220,7 @@ def overview(db: Session, user_id: int, period: str | None = None) -> BudgetOver
                 remaining=b - spent,
                 pct=pct,
                 status=_status(pct) if b > 0 else "ok",
+                exhaust_day=cat_exhaust,
             )
         )
 
@@ -195,17 +241,33 @@ def overview(db: Session, user_id: int, period: str | None = None) -> BudgetOver
         total_spent = all_spent
 
     total_remaining = (total_budget - total_spent) if total_budget is not None else None
+
+    # Sisihkan tagihan rutin yang belum jatuh tempo dari "sisa aman" agar jujur.
+    reserved_recurring = Decimal(0)
     safe_to_spend = None
     if total_budget is not None and days_left > 0:
-        safe_to_spend = (total_budget - total_spent) / days_left
+        period_end_date = date(year, mon, days_in_month)
+        reserved_recurring = _pending_recurring_expense(
+            db, user_id, now.date(), period_end_date
+        )
+        remaining_after = total_budget - total_spent - reserved_recurring
+        safe_to_spend = max(remaining_after, Decimal(0)) / days_left
 
-    exhaust_day = None
-    if total_budget is not None and is_current and day_today > 0 and total_spent > 0:
-        avg = total_spent / day_today
-        if avg > 0:
-            days_to_go = (total_budget - total_spent) / avg
-            proj = day_today + int(days_to_go.to_integral_value())
-            exhaust_day = min(max(proj, day_today), days_in_month)
+    exhaust_day = (
+        _exhaust_day(total_budget, total_spent, day_today, days_in_month)
+        if is_current
+        else None
+    )
+
+    # Belanja di kategori tanpa budget = titik buta yang tidak menggerus envelope.
+    unbudgeted_spent = all_spent - sum_budgeted_spent
+
+    # Rata-rata & proyeksi jalan tanpa perlu budget (pakai total belanja sebenarnya).
+    avg_daily_spend = None
+    projected_month_total = None
+    if is_current and day_today > 0:
+        avg_daily_spend = all_spent / day_today
+        projected_month_total = avg_daily_spend * days_in_month
 
     return BudgetOverview(
         period=period,
@@ -218,6 +280,10 @@ def overview(db: Session, user_id: int, period: str | None = None) -> BudgetOver
         day_today=day_today,
         days_in_month=days_in_month,
         exhaust_day=exhaust_day,
+        unbudgeted_spent=unbudgeted_spent,
+        reserved_recurring=reserved_recurring,
+        avg_daily_spend=avg_daily_spend,
+        projected_month_total=projected_month_total,
         categories=categories,
     )
 

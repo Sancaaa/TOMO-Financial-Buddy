@@ -5,11 +5,13 @@ from app.api.deps import get_current_user
 from app.core.database import get_db
 from app.models import User
 from app.schemas.budget import (
+    AlertsOut,
     BudgetOverviewOut,
     BudgetSet,
     CategoryBudgetOut,
     SafeToSpendOut,
 )
+from app.services.alerts import preview_budget_alerts
 from app.services.budget import overview, set_budget
 
 router = APIRouter(
@@ -29,6 +31,10 @@ def _to_overview_out(ov) -> BudgetOverviewOut:
         day_today=ov.day_today,
         days_in_month=ov.days_in_month,
         exhaust_day=ov.exhaust_day,
+        unbudgeted_spent=ov.unbudgeted_spent,
+        reserved_recurring=ov.reserved_recurring,
+        avg_daily_spend=ov.avg_daily_spend,
+        projected_month_total=ov.projected_month_total,
         categories=[CategoryBudgetOut(**vars(c)) for c in ov.categories],
     )
 
@@ -56,7 +62,19 @@ def get_safe_to_spend(
         safe_to_spend=ov.safe_to_spend,
         days_left=ov.days_left,
         exhaust_day=ov.exhaust_day,
+        reserved_recurring=ov.reserved_recurring,
+        projected_month_total=ov.projected_month_total,
     )
+
+
+@router.get("/alerts", response_model=AlertsOut)
+def get_alerts(
+    period: str | None = None,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+) -> AlertsOut:
+    """Status ambang budget saat ini untuk banner web (read-only, tanpa dedup)."""
+    return AlertsOut(alerts=preview_budget_alerts(db, user.id, period))
 
 
 @router.put("", status_code=status.HTTP_204_NO_CONTENT)

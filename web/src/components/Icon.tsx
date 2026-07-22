@@ -14,7 +14,7 @@ export type IconName =
   | "wallet" | "award" | "briefcase"
   // aksi / status
   | "camera" | "check" | "target" | "trophy" | "close" | "trash"
-  | "arrow-up" | "arrow-down" | "swap" | "refresh" | "tag" | "spark";
+  | "arrow-up" | "arrow-down" | "swap" | "refresh" | "tag" | "spark" | "alert";
 
 const P: Record<IconName, ReactNode> = {
   home: <><path d="M4 11.5 12 4l8 7.5" /><path d="M6 10v9h12v-9" /></>,
@@ -45,6 +45,7 @@ const P: Record<IconName, ReactNode> = {
   trophy: <><path d="M8 4h8v4.5a4 4 0 0 1-8 0Z" /><path d="M8 5.2H5v1.2a3 3 0 0 0 3 3M16 5.2h3v1.2a3 3 0 0 1-3 3" /><path d="M12 12.5v3M9.2 19h5.6M10 19c0-1.6.6-2.2 2-2.2s2 .6 2 2.2" /></>,
   close: <path d="M6.5 6.5l11 11M17.5 6.5l-11 11" />,
   trash: <><path d="M4.5 7h15M10 7V4.8h4V7M6.5 7l1 12.5h9L17.5 7" /></>,
+  alert: <><path d="M12 4.5 21 19H3l9-14.5Z" /><path d="M12 10v4.2" /><path d="M12 16.6h.01" /></>,
   "arrow-up": <path d="M12 19V5M6.5 10.5 12 5l5.5 5.5" />,
   "arrow-down": <path d="M12 5v14M6.5 13.5 12 19l5.5-5.5" />,
   swap: <><path d="M6 8h13l-3-3M18 16H5l3 3" /></>,
