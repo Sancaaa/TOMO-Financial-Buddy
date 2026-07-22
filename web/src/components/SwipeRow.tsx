@@ -1,4 +1,5 @@
 import { useRef, useState } from "react";
+import { clampOffset, detectIntent, resolveOffset, tapAction } from "../lib/swipe";
 
 export interface SwipeAction {
   label: string;
@@ -45,8 +46,9 @@ export function SwipeRow({
     const dxRaw = e.clientX - startX.current;
     const dyRaw = e.clientY - startY.current;
     if (!locked.current) {
-      if (Math.abs(dxRaw) < 8 && Math.abs(dyRaw) < 8) return; // arah belum jelas
-      if (Math.abs(dyRaw) > Math.abs(dxRaw)) {
+      const intent = detectIntent(dxRaw, dyRaw);
+      if (intent === "pending") return; // arah belum jelas
+      if (intent === "vertical") {
         active.current = false; // niat scroll vertikal → serahkan ke browser
         return;
       }
@@ -55,7 +57,7 @@ export function SwipeRow({
       setDragging(true);
       (e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId);
     }
-    setDx(Math.max(-width, Math.min(0, base.current + dxRaw)));
+    setDx(clampOffset(base.current, dxRaw, width));
   }
   function endDrag() {
     if (!active.current) return;
@@ -63,7 +65,7 @@ export function SwipeRow({
     if (!locked.current) return; // tak pernah jadi geseran horizontal
     locked.current = false;
     setDragging(false);
-    base.current = dx < -width / 2 ? -width : 0;
+    base.current = resolveOffset(dx, width);
     setDx(base.current);
   }
   function close() {
@@ -71,12 +73,9 @@ export function SwipeRow({
     setDx(0);
   }
   function tap() {
-    if (moved.current) return; // itu geseran, bukan tap
-    if (base.current !== 0) {
-      close(); // sedang terbuka → tutup dulu
-      return;
-    }
-    onTap?.();
+    const action = tapAction(moved.current, base.current !== 0);
+    if (action === "close") close();
+    else if (action === "select") onTap?.();
   }
 
   return (

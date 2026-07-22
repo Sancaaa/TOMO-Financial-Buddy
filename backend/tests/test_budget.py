@@ -285,3 +285,10 @@ def test_alerts_endpoint_readonly(auth_client):
     assert any("80" in m or "sudah" in m for m in first)
     # panggil lagi → tetap tampil (read-only)
     assert auth_client.get("/budgets/alerts").json()["alerts"] == first
+
+
+def test_preview_alerts_empty_when_under(auth_client):
+    makan = _makan_id(auth_client)
+    auth_client.put("/budgets", json={"category_id": makan, "amount": 100000})
+    auth_client.post("/transactions", json={"amount": 50000, "type": "expense", "category_id": makan})
+    assert auth_client.get("/budgets/alerts").json()["alerts"] == []  # 50% < 80%

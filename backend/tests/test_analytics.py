@@ -86,6 +86,37 @@ def test_comparison_none_when_no_prev(auth_client):
     assert c["pct"] is None  # tak bisa dibandingkan
 
 
+def test_comparison_down_reports_saver_category(auth_client):
+    # Pengeluaran turun → arah "hemat", pendorong = kategori yang paling turun.
+    jajan, makan = _cid(auth_client, "Jajan"), _cid(auth_client, "Makan")
+    _mk(auth_client, 200000, "expense", "2026-04-10T10:00:00Z", jajan)
+    _mk(auth_client, 100000, "expense", "2026-04-11T10:00:00Z", makan)
+    _mk(auth_client, 50000, "expense", "2026-05-10T10:00:00Z", jajan)  # Jajan turun
+    _mk(auth_client, 100000, "expense", "2026-05-11T10:00:00Z", makan)
+
+    c = auth_client.get("/analytics/comparison", params={"month": "2026-05"}).json()
+    assert c["up"] is False
+    assert c["pct"] == -50
+    assert c["driver_category"] == "Jajan"
+    assert float(c["driver_delta"]) == -150000
+
+
+def test_top_merchants_empty(auth_client):
+    res = auth_client.get("/analytics/top-merchants", params={"month": "2026-05"}).json()
+    assert res["merchants"] == []
+
+
+def test_weekly_insight_no_prev(db, uid):
+    # Tanpa data minggu sebelumnya → tetap terkirim, tanpa baris perbandingan.
+    now = now_local()
+    db.add(Transaction(user_id=uid, amount=Decimal(80000), type="expense",
+                       occurred_at=now - timedelta(days=1)))
+    db.commit()
+    msg = build_weekly_insight(db, now, uid)
+    assert "Rekap mingguan" in msg
+    assert "lebih boros" not in msg and "lebih hemat" not in msg
+
+
 def test_trend_anchor_to_selected_month(auth_client):
     _mk(auth_client, 20000, "expense", "2026-05-10T10:00:00Z")
     points = auth_client.get(
