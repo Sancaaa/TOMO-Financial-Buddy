@@ -221,6 +221,51 @@ def test_category_exhaust_day(auth_client):
     assert ov["day_today"] <= cat["exhaust_day"] <= ov["days_in_month"]
 
 
+def test_cycle_bounds_default_unchanged():
+    # T3.4: day=1 harus identik dengan bulan kalender (regresi).
+    from app.services.budget import _bounds
+    s, e, clen = _bounds("2026-02", 1)
+    assert s.day == 1 and s.month == 2
+    assert e.month == 2 and e.day == 28
+    assert clen == 28
+
+
+def test_cycle_bounds_custom_day():
+    from app.services.budget import _bounds
+    start, end, clen = _bounds("2026-07", 5)
+    assert (start.month, start.day) == (7, 5)
+    assert (end.month, end.day) == (8, 4)  # sampai sebelum 5 Agu
+    assert clen == 31  # 5 Jul .. 4 Agu
+
+
+def test_cycle_default_is_calendar(auth_client):
+    assert auth_client.get("/budgets/cycle").json()["cycle_start_day"] == 1
+
+
+def test_custom_cycle_period_membership(auth_client):
+    assert auth_client.put("/budgets/cycle", json={"cycle_start_day": 5}).status_code == 204
+    assert auth_client.get("/budgets/cycle").json()["cycle_start_day"] == 5
+    auth_client.put("/budgets", json={"category_id": None, "amount": 1000000})
+
+    # 3 Juli → masih siklus yang mulai 5 Juni → period 2026-06
+    auth_client.post("/transactions", json={"amount": 100000, "type": "expense",
+                                            "occurred_at": "2026-07-03T05:00:00Z"})
+    # 10 Juli → siklus yang mulai 5 Juli → period 2026-07
+    auth_client.post("/transactions", json={"amount": 200000, "type": "expense",
+                                            "occurred_at": "2026-07-10T05:00:00Z"})
+
+    jun = auth_client.get("/budgets", params={"period": "2026-06"}).json()
+    jul = auth_client.get("/budgets", params={"period": "2026-07"}).json()
+    assert float(jun["total_spent"]) == 100000
+    assert float(jul["total_spent"]) == 200000
+
+
+def test_cycle_reset_to_calendar(auth_client):
+    auth_client.put("/budgets/cycle", json={"cycle_start_day": 10})
+    auth_client.put("/budgets/cycle", json={"cycle_start_day": 1})  # 1 = hapus setelan
+    assert auth_client.get("/budgets/cycle").json()["cycle_start_day"] == 1
+
+
 def test_alerts_endpoint_readonly(auth_client):
     # T1.3: banner web memakai status saat ini, tanpa dedup (beda dari job harian).
     makan = _makan_id(auth_client)

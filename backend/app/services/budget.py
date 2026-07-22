@@ -6,16 +6,15 @@ Sumber budget:
 - budget TOTAL          = tabel `budgets` (category_id NULL; period NULL default / 'YYYY-MM' override)
 """
 
-from calendar import monthrange
 from dataclasses import dataclass, field
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from decimal import Decimal
 
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.core.clock import LOCAL_TZ, now_local
-from app.models import Budget, Category, RecurringTx, Transaction
+from app.models import Budget, Category, RecurringTx, Transaction, User
 
 
 @dataclass
@@ -49,9 +48,23 @@ class BudgetOverview:
     categories: list[CategoryBudget] = field(default_factory=list)
 
 
-def current_period() -> str:
+def cycle_start_day(db: Session, user_id: int) -> int:
+    """Hari mulai siklus budget user (1..28). 1 = bulan kalender biasa (default)."""
+    user = db.get(User, user_id)
+    d = (user.settings or {}).get("cycle_start_day") if user else None
+    return d if isinstance(d, int) and 1 <= d <= 28 else 1
+
+
+def current_period(day: int = 1) -> str:
+    """Label periode (YYYY-MM = bulan tempat siklus DIMULAI) yang memuat hari ini."""
     n = now_local()
-    return f"{n.year:04d}-{n.month:02d}"
+    year, mon = n.year, n.month
+    if n.day < day:  # belum masuk siklus bulan ini → masih siklus yang mulai bulan lalu
+        mon -= 1
+        if mon == 0:
+            mon = 12
+            year -= 1
+    return f"{year:04d}-{mon:02d}"
 
 
 def _period_parts(period: str) -> tuple[int, int]:
@@ -68,8 +81,10 @@ def _prev_period(period: str) -> str:
     return f"{year:04d}-{mon:02d}"
 
 
-def _spent_by_category(db: Session, period: str, user_id: int) -> dict[int | None, Decimal]:
-    start, end, _ = _bounds(period)
+def _spent_by_category(
+    db: Session, period: str, user_id: int, day: int = 1
+) -> dict[int | None, Decimal]:
+    start, end, _ = _bounds(period, day)
     rows = db.execute(
         select(Transaction.category_id, func.coalesce(func.sum(Transaction.amount), 0))
         .where(
@@ -83,12 +98,18 @@ def _spent_by_category(db: Session, period: str, user_id: int) -> dict[int | Non
     return {cid: Decimal(total) for cid, total in rows}
 
 
-def _bounds(period: str) -> tuple[datetime, datetime, int]:
+def _bounds(period: str, day: int = 1) -> tuple[datetime, datetime, int]:
+    """Batas siklus untuk `period`. day=1 → identik dengan bulan kalender.
+
+    Siklus berjalan dari (period-month, day) sampai sesaat sebelum bulan berikutnya
+    di tanggal yang sama. day dijamin 1..28 sehingga selalu valid tiap bulan.
+    """
     year, mon = _period_parts(period)
-    last = monthrange(year, mon)[1]
-    start = datetime(year, mon, 1, 0, 0, 0, tzinfo=LOCAL_TZ)
-    end = datetime(year, mon, last, 23, 59, 59, 999999, tzinfo=LOCAL_TZ)
-    return start, end, last
+    start = datetime(year, mon, day, 0, 0, 0, tzinfo=LOCAL_TZ)
+    ny, nm = (year, mon + 1) if mon < 12 else (year + 1, 1)
+    end = datetime(ny, nm, day, 0, 0, 0, tzinfo=LOCAL_TZ) - timedelta(microseconds=1)
+    cycle_len = (end.date() - start.date()).days + 1
+    return start, end, cycle_len
 
 
 def _status(pct: int) -> str:
@@ -103,17 +124,24 @@ def _exhaust_day(
     budget: Decimal | None,
     spent: Decimal,
     day_today: int,
-    days_in_month: int,
+    cycle_len: int,
+    start_date: date,
 ) -> int | None:
-    """Perkiraan tanggal budget habis dengan laju belanja saat ini. None bila tak relevan."""
+    """Tanggal (day-of-month) perkiraan budget habis. None bila tak relevan.
+
+    `day_today`/`cycle_len` adalah posisi & panjang dalam siklus; hasil dikonversi
+    ke tanggal kalender via `start_date` agar tetap masuk akal saat siklus custom
+    melintasi batas bulan.
+    """
     if budget is None or budget <= 0 or spent <= 0 or day_today <= 0:
         return None
     avg = spent / day_today
     if avg <= 0:
         return None
     days_to_go = (budget - spent) / avg
-    proj = day_today + int(days_to_go.to_integral_value())
-    return min(max(proj, day_today), days_in_month)
+    pos = day_today + int(days_to_go.to_integral_value())
+    pos = min(max(pos, day_today), cycle_len)
+    return (start_date + timedelta(days=pos - 1)).day
 
 
 def _pending_recurring_expense(
@@ -167,15 +195,19 @@ def effective_budget(
 
 
 def overview(db: Session, user_id: int, period: str | None = None) -> BudgetOverview:
-    period = period or current_period()
-    start, end, days_in_month = _bounds(period)
+    day = cycle_start_day(db, user_id)
+    period = period or current_period(day)
+    start, end, days_in_month = _bounds(period, day)  # days_in_month = panjang siklus
     now = now_local()
-    year, mon = _period_parts(period)
-    is_current = now.year == year and now.month == mon
-    day_today = now.day if is_current else days_in_month
-    days_left = max(days_in_month - day_today + 1, 0) if is_current else 0
+    is_current = start <= now <= end
+    if is_current:
+        day_today = (now.date() - start.date()).days + 1
+        days_left = max(days_in_month - day_today + 1, 0)
+    else:
+        day_today = days_in_month
+        days_left = 0
 
-    spent_by_cat = _spent_by_category(db, period, user_id)
+    spent_by_cat = _spent_by_category(db, period, user_id, day)
     all_spent = sum(spent_by_cat.values(), Decimal(0))
 
     prev_period = _prev_period(period)
@@ -194,7 +226,7 @@ def overview(db: Session, user_id: int, period: str | None = None) -> BudgetOver
         # rollover: tambahkan sisa positif budget bulan lalu
         if budget is not None and cat.budget_rollover:
             if _prev_spent is None:
-                _prev_spent = _spent_by_category(db, prev_period, user_id)
+                _prev_spent = _spent_by_category(db, prev_period, user_id, day)
             prev_budget = effective_budget(db, cat.id, prev_period, user_id, cat)
             if prev_budget:
                 leftover = prev_budget - _prev_spent.get(cat.id, Decimal(0))
@@ -209,7 +241,9 @@ def overview(db: Session, user_id: int, period: str | None = None) -> BudgetOver
         b = budget or Decimal(0)
         pct = int((spent / b * 100).to_integral_value()) if b > 0 else 0
         cat_exhaust = (
-            _exhaust_day(b, spent, day_today, days_in_month) if is_current else None
+            _exhaust_day(b, spent, day_today, days_in_month, start.date())
+            if is_current
+            else None
         )
         categories.append(
             CategoryBudget(
@@ -246,15 +280,14 @@ def overview(db: Session, user_id: int, period: str | None = None) -> BudgetOver
     reserved_recurring = Decimal(0)
     safe_to_spend = None
     if total_budget is not None and days_left > 0:
-        period_end_date = date(year, mon, days_in_month)
         reserved_recurring = _pending_recurring_expense(
-            db, user_id, now.date(), period_end_date
+            db, user_id, now.date(), end.date()
         )
         remaining_after = total_budget - total_spent - reserved_recurring
         safe_to_spend = max(remaining_after, Decimal(0)) / days_left
 
     exhaust_day = (
-        _exhaust_day(total_budget, total_spent, day_today, days_in_month)
+        _exhaust_day(total_budget, total_spent, day_today, days_in_month, start.date())
         if is_current
         else None
     )

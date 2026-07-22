@@ -128,6 +128,26 @@ export function useBudgetAlerts() {
   });
 }
 
+export function useCycle() {
+  return useQuery({
+    queryKey: ["cycle"],
+    queryFn: () => api.get<{ cycle_start_day: number }>("/budgets/cycle"),
+  });
+}
+
+export function useSetCycle() {
+  const qc = useQueryClient();
+  const invalidate = useInvalidateData();
+  return useMutation({
+    mutationFn: (cycle_start_day: number) =>
+      api.put<void>("/budgets/cycle", { cycle_start_day }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["cycle"] });
+      invalidate(); // periode budget bergeser → segarkan budgets & analitik
+    },
+  });
+}
+
 export function useSetBudget() {
   const qc = useQueryClient();
   return useMutation({

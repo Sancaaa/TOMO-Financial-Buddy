@@ -4,7 +4,7 @@ from datetime import datetime, timedelta
 
 from sqlalchemy.orm import Session
 
-from app.services.budget import current_period, overview
+from app.services.budget import overview
 from app.services.money import month_label, rupiah
 from app.services.summary import period_summary
 
@@ -15,7 +15,7 @@ def build_daily_digest(db: Session, now: datetime, user_id: int) -> str:
     day_start = ref.replace(hour=0, minute=0, second=0, microsecond=0)
     day_end = day_start + timedelta(days=1) - timedelta(microseconds=1)
     yesterday = period_summary(db, day_start, day_end, user_id)
-    ov = overview(db, user_id, current_period())
+    ov = overview(db, user_id)  # periode default = siklus budget berjalan
 
     lines = ["🍅 <b>Kabar Tomo kemarin</b>"]
     lines.append(f"Keluar kemarin: <b>{rupiah(yesterday.total_expense)}</b>")

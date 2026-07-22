@@ -46,6 +46,14 @@ class AlertsOut(BaseModel):
     alerts: list[str]
 
 
+class CycleOut(BaseModel):
+    cycle_start_day: int  # 1 = mengikuti bulan kalender
+
+
+class CycleSet(BaseModel):
+    cycle_start_day: int = Field(ge=1, le=28)
+
+
 class BudgetSet(BaseModel):
     category_id: int | None = None  # None = budget total
     amount: Decimal | None  # None = hapus

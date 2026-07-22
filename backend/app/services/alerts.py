@@ -6,7 +6,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.models import BudgetAlert
-from app.services.budget import current_period, overview
+from app.services.budget import current_period, cycle_start_day, overview
 from app.services.money import rupiah
 
 _THRESHOLDS = (80, 100)
@@ -49,7 +49,7 @@ def preview_budget_alerts(db: Session, user_id: int, period: str | None = None) 
     Read-only: TIDAK menandai dedup, jadi selalu mencerminkan keadaan sekarang
     (beda dari `check_budget_alerts` yang dipakai job harian sekali-per-ambang).
     """
-    ov = overview(db, user_id, period or current_period())
+    ov = overview(db, user_id, period)  # overview memakai default siklus bila None
     messages: list[str] = []
     for category_id, name, budget, spent in _crossed_targets(ov):
         pct = int((spent / budget * 100).to_integral_value())
@@ -60,7 +60,7 @@ def preview_budget_alerts(db: Session, user_id: int, period: str | None = None) 
 
 
 def check_budget_alerts(db: Session, user_id: int, period: str | None = None) -> list[str]:
-    period = period or current_period()
+    period = period or current_period(cycle_start_day(db, user_id))
     ov = overview(db, user_id, period)
 
     messages: list[str] = []

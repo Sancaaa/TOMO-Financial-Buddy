@@ -14,6 +14,8 @@ import {
   useBudgets,
   useCategories,
   useContributeGoal,
+  useCycle,
+  useSetCycle,
   useDeleteAccount,
   useDeleteCategory,
   useDeleteGoal,
@@ -180,6 +182,7 @@ export function Manage() {
       <div className="cols">
         <div className="col">
           <BudgetTotalCard />
+          <CycleCard />
         </div>
         <div className="col">
           <RecurringCard />
@@ -317,6 +320,31 @@ function BudgetTotalCard() {
         <button className="btn btn-primary" onClick={save} disabled={set.isPending || !amount}>
           Simpan
         </button>
+      </div>
+    </div>
+  );
+}
+
+function CycleCard() {
+  const { data } = useCycle();
+  const set = useSetCycle();
+  const day = data?.cycle_start_day ?? 1;
+
+  return (
+    <div className="card stack">
+      <div className="section-title">Siklus budget</div>
+      <p className="hint">
+        Kalau uang masuk tiap tanggal tertentu (mis. kiriman tgl 5), atur di sini —
+        budget, sisa aman, & alert ikut siklus ini, bukan tanggal 1.
+      </p>
+      <div className="field">
+        <label>Mulai tiap tanggal</label>
+        <select value={day} onChange={(e) => set.mutate(Number(e.target.value))} disabled={set.isPending}>
+          <option value={1}>1 — ikuti bulan kalender</option>
+          {Array.from({ length: 27 }, (_, i) => i + 2).map((d) => (
+            <option key={d} value={d}>Tanggal {d}</option>
+          ))}
+        </select>
       </div>
     </div>
   );

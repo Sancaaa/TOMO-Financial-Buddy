@@ -9,10 +9,12 @@ from app.schemas.budget import (
     BudgetOverviewOut,
     BudgetSet,
     CategoryBudgetOut,
+    CycleOut,
+    CycleSet,
     SafeToSpendOut,
 )
 from app.services.alerts import preview_budget_alerts
-from app.services.budget import overview, set_budget
+from app.services.budget import cycle_start_day, overview, set_budget
 
 router = APIRouter(
     prefix="/budgets", tags=["budgets"], dependencies=[Depends(get_current_user)]
@@ -84,3 +86,27 @@ def put_budget(
     user: User = Depends(get_current_user),
 ) -> None:
     set_budget(db, payload.category_id, payload.amount, user.id, payload.period)
+
+
+@router.get("/cycle", response_model=CycleOut)
+def get_cycle(
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+) -> CycleOut:
+    return CycleOut(cycle_start_day=cycle_start_day(db, user.id))
+
+
+@router.put("/cycle", status_code=status.HTTP_204_NO_CONTENT)
+def put_cycle(
+    payload: CycleSet,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+) -> None:
+    u = db.get(User, user.id)
+    s = dict(u.settings or {})
+    if payload.cycle_start_day <= 1:
+        s.pop("cycle_start_day", None)  # 1 = default kalender → hapus setelan
+    else:
+        s["cycle_start_day"] = payload.cycle_start_day
+    u.settings = s
+    db.commit()
