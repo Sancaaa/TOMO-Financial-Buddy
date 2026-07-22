@@ -18,7 +18,11 @@ from app.core.config import settings
 from app.core.database import SessionLocal
 from app.models import User
 from app.services.alerts import check_budget_alerts
-from app.services.digest import build_daily_digest, build_period_review
+from app.services.digest import (
+    build_daily_digest,
+    build_period_review,
+    build_weekly_insight,
+)
 from app.services.recurring import run_due_recurring
 
 log = logging.getLogger("scheduler")
@@ -67,6 +71,11 @@ def daily_job() -> None:
                 outbox.extend(check_budget_alerts(db, user.id))
             except Exception:
                 log.exception("alert budget gagal untuk user %s", user.id)
+            if now.weekday() == 0:  # Senin: rekap mingguan
+                try:
+                    outbox.append(build_weekly_insight(db, now, user.id))
+                except Exception:
+                    log.exception("insight mingguan gagal untuk user %s", user.id)
             if now.day == 1:
                 try:
                     outbox.append(build_period_review(db, _prev_period(now), user.id))

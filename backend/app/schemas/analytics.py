@@ -35,3 +35,26 @@ class ComparisonOut(BaseModel):
     up: bool
     driver_category: str | None
     driver_delta: Decimal | None
+
+
+class HeatmapDay(BaseModel):
+    day: int
+    total: Decimal
+
+
+class HeatmapOut(BaseModel):
+    month: str
+    days_in_month: int
+    first_weekday: int  # 0=Senin .. 6=Minggu (weekday tgl 1)
+    days: list[HeatmapDay]
+
+
+class MerchantStatOut(BaseModel):
+    merchant: str
+    total: Decimal
+    count: int
+
+
+class TopMerchantsOut(BaseModel):
+    month: str
+    merchants: list[MerchantStatOut]

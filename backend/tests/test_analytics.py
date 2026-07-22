@@ -1,3 +1,11 @@
+from datetime import datetime, timedelta, timezone
+from decimal import Decimal
+
+from app.core.clock import now_local
+from app.models import Receipt, Transaction
+from app.services.digest import build_weekly_insight
+
+
 def _mk(auth_client, amount, ttype, occurred_at, category_id=None):
     return auth_client.post(
         "/transactions",
@@ -85,3 +93,54 @@ def test_trend_anchor_to_selected_month(auth_client):
     ).json()["points"]
     assert points[-1]["month"] == "2026-05"
     assert len(points) == 6
+
+
+def test_heatmap_endpoint(auth_client):
+    # T3.1: pengeluaran per tanggal (jam pilih agar tetap di hari lokal yang sama).
+    _mk(auth_client, 20000, "expense", "2026-05-03T02:00:00Z")
+    _mk(auth_client, 30000, "expense", "2026-05-03T05:00:00Z")
+    _mk(auth_client, 10000, "expense", "2026-05-10T05:00:00Z")
+
+    h = auth_client.get("/analytics/heatmap", params={"month": "2026-05"}).json()
+    assert h["days_in_month"] == 31
+    by_day = {d["day"]: float(d["total"]) for d in h["days"]}
+    assert by_day[3] == 50000
+    assert by_day[10] == 10000
+    assert by_day[1] == 0
+
+
+def test_top_merchants_endpoint(auth_client, db, uid):
+    # T3.2: agregasi merchant dari transaksi yang punya struk.
+    r1 = Receipt(user_id=uid, file_path="a", ocr_status="done", merchant="Indomaret")
+    r2 = Receipt(user_id=uid, file_path="b", ocr_status="done", merchant="Alfamart")
+    db.add_all([r1, r2])
+    db.flush()
+    db.add_all([
+        Transaction(user_id=uid, amount=Decimal(30000), type="expense",
+                    receipt_id=r1.id, occurred_at=datetime(2026, 5, 3, 10, tzinfo=timezone.utc)),
+        Transaction(user_id=uid, amount=Decimal(20000), type="expense",
+                    receipt_id=r1.id, occurred_at=datetime(2026, 5, 4, 10, tzinfo=timezone.utc)),
+        Transaction(user_id=uid, amount=Decimal(15000), type="expense",
+                    receipt_id=r2.id, occurred_at=datetime(2026, 5, 5, 10, tzinfo=timezone.utc)),
+    ])
+    db.commit()
+
+    ms = auth_client.get("/analytics/top-merchants", params={"month": "2026-05"}).json()["merchants"]
+    assert ms[0]["merchant"] == "Indomaret"
+    assert float(ms[0]["total"]) == 50000
+    assert ms[0]["count"] == 2
+    assert ms[1]["merchant"] == "Alfamart"
+
+
+def test_weekly_insight(db, uid):
+    # T3.5: rekap 7 hari terakhir vs minggu sebelumnya.
+    now = now_local()
+    db.add(Transaction(user_id=uid, amount=Decimal(100000), type="expense",
+                       occurred_at=now - timedelta(days=2)))
+    db.add(Transaction(user_id=uid, amount=Decimal(50000), type="expense",
+                       occurred_at=now - timedelta(days=10)))
+    db.commit()
+
+    msg = build_weekly_insight(db, now, uid)
+    assert "Rekap mingguan" in msg
+    assert "100%" in msg and "lebih boros" in msg

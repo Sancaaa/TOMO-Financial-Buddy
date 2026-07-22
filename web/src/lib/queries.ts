@@ -6,6 +6,7 @@ import type {
   BudgetOverview,
   Category,
   Comparison,
+  Heatmap,
   LinkCode,
   NetWorth,
   OCRResult,
@@ -13,6 +14,7 @@ import type {
   Recurring,
   SavingGoal,
   Summary,
+  TopMerchants,
   Transaction,
   TransactionList,
   Trend,
@@ -82,6 +84,20 @@ export function useComparison(month: string) {
   });
 }
 
+export function useHeatmap(month: string) {
+  return useQuery({
+    queryKey: ["heatmap", month],
+    queryFn: () => api.get<Heatmap>(`/analytics/heatmap?month=${month}`),
+  });
+}
+
+export function useTopMerchants(month: string) {
+  return useQuery({
+    queryKey: ["top-merchants", month],
+    queryFn: () => api.get<TopMerchants>(`/analytics/top-merchants?month=${month}`),
+  });
+}
+
 function useInvalidateData() {
   const qc = useQueryClient();
   return () => {
@@ -89,6 +105,8 @@ function useInvalidateData() {
     qc.invalidateQueries({ queryKey: ["summary"] });
     qc.invalidateQueries({ queryKey: ["trend"] });
     qc.invalidateQueries({ queryKey: ["comparison"] });
+    qc.invalidateQueries({ queryKey: ["heatmap"] });
+    qc.invalidateQueries({ queryKey: ["top-merchants"] });
     qc.invalidateQueries({ queryKey: ["accounts"] });
     qc.invalidateQueries({ queryKey: ["networth"] });
     qc.invalidateQueries({ queryKey: ["budgets"] });

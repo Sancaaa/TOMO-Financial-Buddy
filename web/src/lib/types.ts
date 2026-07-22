@@ -105,6 +105,24 @@ export interface Comparison {
   driver_delta: string | null;
 }
 
+export interface Heatmap {
+  month: string;
+  days_in_month: number;
+  first_weekday: number;
+  days: { day: number; total: string }[];
+}
+
+export interface MerchantStat {
+  merchant: string;
+  total: string;
+  count: number;
+}
+
+export interface TopMerchants {
+  month: string;
+  merchants: MerchantStat[];
+}
+
 export interface CategoryBudget {
   category_id: number;
   name: string;

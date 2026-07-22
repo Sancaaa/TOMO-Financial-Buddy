@@ -1,13 +1,20 @@
 from calendar import monthrange
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 from decimal import Decimal
 
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.core.clock import LOCAL_TZ
-from app.models import Category, Transaction
+from app.models import Category, Receipt, Transaction
+
+
+def _to_local(dt: datetime) -> datetime:
+    """Normalkan ke zona lokal. Datetime naif dianggap UTC (kasus SQLite)."""
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    return dt.astimezone(LOCAL_TZ)
 
 
 @dataclass
@@ -161,3 +168,54 @@ def monthly_trend(db: Session, months: int, ref: datetime, user_id: int) -> list
             )
         )
     return points
+
+
+def daily_expense(db: Session, year: int, mon: int, user_id: int) -> dict[int, Decimal]:
+    """Total pengeluaran per tanggal (1..akhir bulan) untuk heatmap kalender."""
+    start, end = _month_bounds(year, mon)
+    rows = db.execute(
+        select(Transaction.occurred_at, Transaction.amount).where(
+            Transaction.user_id == user_id,
+            Transaction.type == "expense",
+            Transaction.occurred_at >= start,
+            Transaction.occurred_at <= end,
+        )
+    ).all()
+    out: dict[int, Decimal] = {}
+    for occurred_at, amount in rows:
+        d = _to_local(occurred_at).day
+        out[d] = out.get(d, Decimal(0)) + Decimal(amount)
+    return out
+
+
+@dataclass
+class MerchantStat:
+    merchant: str
+    total: Decimal
+    count: int
+
+
+def top_merchants(
+    db: Session, year: int, mon: int, user_id: int, limit: int = 8
+) -> list[MerchantStat]:
+    """Merchant terbanyak dari transaksi yang punya struk (data OCR)."""
+    start, end = _month_bounds(year, mon)
+    rows = db.execute(
+        select(
+            Receipt.merchant,
+            func.sum(Transaction.amount),
+            func.count(Transaction.id),
+        )
+        .join(Receipt, Receipt.id == Transaction.receipt_id)
+        .where(
+            Transaction.user_id == user_id,
+            Transaction.type == "expense",
+            Transaction.occurred_at >= start,
+            Transaction.occurred_at <= end,
+            Receipt.merchant.is_not(None),
+        )
+        .group_by(Receipt.merchant)
+        .order_by(func.sum(Transaction.amount).desc())
+        .limit(limit)
+    ).all()
+    return [MerchantStat(merchant=m, total=Decimal(t), count=int(c)) for m, t, c in rows]

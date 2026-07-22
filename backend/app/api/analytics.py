@@ -11,11 +11,21 @@ from app.models import User
 from app.schemas.analytics import (
     CategorySlice,
     ComparisonOut,
+    HeatmapDay,
+    HeatmapOut,
+    MerchantStatOut,
     SummaryOut,
+    TopMerchantsOut,
     TrendOut,
     TrendPoint,
 )
-from app.services.summary import monthly_trend, period_summary, spending_comparison
+from app.services.summary import (
+    daily_expense,
+    monthly_trend,
+    period_summary,
+    spending_comparison,
+    top_merchants,
+)
 
 router = APIRouter(
     prefix="/analytics", tags=["analytics"], dependencies=[Depends(get_current_user)]
@@ -92,4 +102,40 @@ def comparison(
         up=c.up,
         driver_category=c.driver_category,
         driver_delta=c.driver_delta,
+    )
+
+
+@router.get("/heatmap", response_model=HeatmapOut)
+def heatmap(
+    month: str | None = None,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+) -> HeatmapOut:
+    label, _, _ = _month_range(month)
+    year, mon = (int(x) for x in label.split("-"))
+    first_weekday, days_in_month = monthrange(year, mon)
+    totals = daily_expense(db, year, mon, user.id)
+    return HeatmapOut(
+        month=label,
+        days_in_month=days_in_month,
+        first_weekday=first_weekday,
+        days=[HeatmapDay(day=d, total=totals.get(d, 0)) for d in range(1, days_in_month + 1)],
+    )
+
+
+@router.get("/top-merchants", response_model=TopMerchantsOut)
+def top_merchants_endpoint(
+    month: str | None = None,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+) -> TopMerchantsOut:
+    label, _, _ = _month_range(month)
+    year, mon = (int(x) for x in label.split("-"))
+    merchants = top_merchants(db, year, mon, user.id)
+    return TopMerchantsOut(
+        month=label,
+        merchants=[
+            MerchantStatOut(merchant=m.merchant, total=m.total, count=m.count)
+            for m in merchants
+        ],
     )

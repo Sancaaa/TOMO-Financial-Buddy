@@ -1,12 +1,22 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Bars, Donut } from "../components/Charts";
+import { Heatmap } from "../components/Heatmap";
 import { PageHead } from "../components/PageHead";
 import { Icon } from "../components/Icon";
 import { BudgetBar } from "../components/BudgetBar";
 import { categoryColor } from "../lib/colors";
 import { currentMonth, monthLong, monthShort, rupiah } from "../lib/format";
-import { useBudgets, useCategories, useComparison, useSummary, useTrend } from "../lib/queries";
+import {
+  useBudgets,
+  useCategories,
+  useComparison,
+  useHeatmap,
+  useRecurring,
+  useSummary,
+  useTopMerchants,
+  useTrend,
+} from "../lib/queries";
 
 export function Analytics() {
   const [month, setMonth] = useState(currentMonth());
@@ -14,9 +24,18 @@ export function Analytics() {
   const trend = useTrend(6, month);
   const budgets = useBudgets(month);
   const comparison = useComparison(month);
+  const heatmap = useHeatmap(month);
+  const merchants = useTopMerchants(month);
+  const recurring = useRecurring();
   const { data: categories } = useCategories();
   const navigate = useNavigate();
   const budgeted = (budgets.data?.categories ?? []).filter((c) => Number(c.budget) > 0);
+
+  const subsTotal = (recurring.data ?? [])
+    .filter((r) => r.active && r.type === "expense")
+    .reduce((s, r) => s + Number(r.amount), 0);
+  const heatDays = (heatmap.data?.days ?? []).map((d) => ({ day: d.day, total: Number(d.total) }));
+  const topMerchants = merchants.data?.merchants ?? [];
 
   const catMap = new Map((categories ?? []).map((c) => [c.name, c.id]));
   function drilldown(name: string) {
@@ -97,6 +116,14 @@ export function Analytics() {
               </span>
             </div>
           )}
+
+          {heatDays.some((d) => d.total > 0) && (
+            <div className="card">
+              <div className="section-title">Kalender pengeluaran</div>
+              <Heatmap days={heatDays} firstWeekday={heatmap.data?.first_weekday ?? 0} />
+              <p className="hint" style={{ marginTop: 8 }}>Makin merah, makin boros hari itu.</p>
+            </div>
+          )}
         </div>
 
         <div className="col">
@@ -128,6 +155,29 @@ export function Analytics() {
               <div className="li"><span className="sw" style={{ background: "var(--leaf)" }} /><span className="nm">Pemasukan</span></div>
             </div>
           </div>
+
+          {topMerchants.length > 0 && (
+            <div className="card">
+              <div className="section-title">Merchant teratas</div>
+              <div className="legend">
+                {topMerchants.map((m) => (
+                  <div className="li" key={m.merchant}>
+                    <span className="nm">{m.merchant}</span>
+                    <span className="hint" style={{ marginLeft: 6 }}>{m.count}×</span>
+                    <span className="vl tabular">{rupiah(m.total)}</span>
+                  </div>
+                ))}
+              </div>
+              <p className="hint" style={{ marginTop: 8 }}>Dari struk yang kamu foto.</p>
+            </div>
+          )}
+
+          {subsTotal > 0 && (
+            <div className="card pad-sm between">
+              <span className="ico-txt"><Icon name="refresh" size={16} /> Langganan & tagihan rutin</span>
+              <span className="tabular"><strong>{rupiah(subsTotal)}</strong>/bln</span>
+            </div>
+          )}
         </div>
       </div>
     </>

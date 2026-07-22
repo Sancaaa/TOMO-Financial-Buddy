@@ -243,6 +243,17 @@ function OcrMode({ onDone }: { onDone: (s: string) => void }) {
             </select>
             <span className="hint">Saldo akun ini yang akan berkurang.</span>
           </div>
+          {result.items.length > 0 && (
+            <div className="stack" style={{ gap: 4 }}>
+              <span className="hint">Item terbaca ({result.items.length}):</span>
+              {result.items.map((it, i) => (
+                <div key={i} className="between">
+                  <span className="hint">{it.name}</span>
+                  {it.price && <span className="hint tabular">{rupiah(it.price)}</span>}
+                </div>
+              ))}
+            </div>
+          )}
           <button className="btn btn-primary btn-block" onClick={confirm} disabled={create.isPending || !amount}>
             {create.isPending ? "Menyimpan…" : "Simpan transaksi"}
           </button>
