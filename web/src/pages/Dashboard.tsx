@@ -26,6 +26,7 @@ export function Dashboard() {
   const [text, setText] = useState("");
   const [selected, setSelected] = useState<Transaction | null>(null);
   const [quickErr, setQuickErr] = useState("");
+  const [quickFlash, setQuickFlash] = useState("");
 
   const slices = (summary.data?.per_category ?? []).map((c) => ({
     name: c.name,
@@ -37,9 +38,13 @@ export function Dashboard() {
     e.preventDefault();
     setQuickErr("");
     try {
-      await quick.mutateAsync(text);
+      const tx = await quick.mutateAsync(text);
+      // Umpan balik apa yang tercatat & ditebak kategori apa; safe-to-spend ikut
+      // ter-refresh lewat invalidasi query "budgets" di useQuickAdd.
+      setQuickFlash(`${rupiah(tx.amount)} — ${tx.category?.name ?? "tercatat"}`);
       setText("");
     } catch (err) {
+      setQuickFlash("");
       setQuickErr(err instanceof Error ? err.message : "Gagal");
     }
   }
@@ -63,6 +68,11 @@ export function Dashboard() {
           </button>
         </div>
         {quickErr && <div className="err" style={{ marginTop: 8 }}>{quickErr}</div>}
+        {quickFlash && (
+          <div className="ico-txt" style={{ marginTop: 8, color: "var(--leaf-dark)" }}>
+            <Icon name="check" size={16} /> {quickFlash}
+          </div>
+        )}
       </form>
 
       <div className="cols">

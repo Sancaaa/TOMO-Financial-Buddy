@@ -83,6 +83,16 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
+        // ── Native-app feel ──────────────────────────────────────────────
+        // Remove the browser-y "rubber-band" / edge glow when scrolling past
+        // the top or bottom — this is the single biggest tell that it's a
+        // WebView rather than a native screen.
+        webView.overScrollMode = View.OVER_SCROLL_NEVER
+        // No horizontal scrollbar (content is meant to fit the width).
+        webView.isHorizontalScrollBarEnabled = false
+        // Keep system font scaling from re-flowing the app's own type scale.
+        webView.settings.textZoom = 100
+
         // Handle page navigation
         webView.webViewClient = object : WebViewClient() {
             override fun onPageStarted(view: WebView?, url: String?, favicon: Bitmap?) {
@@ -100,6 +110,7 @@ class MainActivity : AppCompatActivity() {
                 
                 if (url != ERROR_PAGE) {
                     isErrorShowing = false
+                    injectNativeFeel(view)
                 }
             }
 
@@ -174,6 +185,33 @@ class MainActivity : AppCompatActivity() {
                 }
             })
         }
+    }
+
+    /**
+     * Trims the remaining "web browser" behaviours the WebView flags can't reach:
+     * locks the viewport scale (no pinch / double-tap zoom), kills the tap-highlight
+     * flash and the long-press callout/selection magnifier, and disables overscroll
+     * chaining — while still allowing text selection inside real input fields.
+     */
+    private fun injectNativeFeel(view: WebView?) {
+        val js = """
+            (function() {
+              var vp = document.querySelector('meta[name=viewport]');
+              if (!vp) { vp = document.createElement('meta'); vp.name = 'viewport'; document.head.appendChild(vp); }
+              vp.setAttribute('content', 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover');
+
+              if (!document.getElementById('tomo-native-feel')) {
+                var s = document.createElement('style');
+                s.id = 'tomo-native-feel';
+                s.textContent =
+                  'html,body{overscroll-behavior:none;}' +
+                  '*{-webkit-tap-highlight-color:transparent;-webkit-touch-callout:none;}' +
+                  '*:not(input):not(textarea):not([contenteditable]){-webkit-user-select:none;user-select:none;}';
+                document.head.appendChild(s);
+              }
+            })();
+        """.trimIndent()
+        view?.evaluateJavascript(js, null)
     }
 
     private fun loadMainUrl() {

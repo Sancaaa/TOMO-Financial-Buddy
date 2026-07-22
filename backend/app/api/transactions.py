@@ -19,7 +19,7 @@ from app.schemas.transaction import (
     TransactionUpdate,
     TransferCreate,
 )
-from app.services.categorizer import suggest_category
+from app.services.categorizer import learn_from_correction, suggest_category
 from app.services.ledger import apply_balance
 from app.services.parser import parse_quick_input
 from app.services.receipts import build_draft, process_receipt
@@ -254,6 +254,8 @@ def update_transaction(
     _assert_owned(db, Account, changes.get("account_id"), user.id, "Akun")
     _assert_owned(db, Category, changes.get("category_id"), user.id, "Kategori")
 
+    old_category_id = tx.category_id
+
     # batalkan efek saldo lama, terapkan perubahan, lalu terapkan efek saldo baru
     apply_balance(db, tx, sign=-1)
     for field, value in changes.items():
@@ -262,6 +264,19 @@ def update_transaction(
 
     db.commit()
     db.refresh(tx)
+
+    # Belajar dari koreksi kategori (samakan perilaku dengan bot): saat user
+    # memindahkan transaksi ke kategori lain, petakan token deskripsi ke kategori itu.
+    if (
+        "category_id" in changes
+        and tx.category_id is not None
+        and tx.category_id != old_category_id
+        and tx.description
+    ):
+        category = db.get(Category, tx.category_id)
+        if category is not None:
+            learn_from_correction(db, tx.description, category)
+
     return tx
 
 
